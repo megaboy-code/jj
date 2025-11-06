@@ -1,6 +1,8 @@
 // ===============================================================
-// ⚡ MEGA FLOWZ DASHBOARD - COMPLETE SCRIPT WITH NEW FEATURES
+// ⚡ MEGA FLOWZ DASHBOARD - REORGANIZED SCRIPT
 // ===============================================================
+
+// ==================== GLOBAL STATE & CONFIG ====================
 
 // Global state
 let currentChart = null;
@@ -91,7 +93,79 @@ let indicatorInstances = {
 // Track real indicator values from backend
 let currentIndicatorValues = {};
 
+// DOM elements
+const status = document.getElementById('status');
+const updateInfo = document.getElementById('updateInfo');
+const pyramidDiv = document.getElementById('pyramid');
+const expandedBlocks = new Set();
+
+// ==================== INITIALIZATION ====================
+
+function initializeDashboard() {
+    console.log("🧠 Initializing MEGA FLOWZ Professional Dashboard...");
+    
+    // Set defaults
+    const pairsSelect = document.getElementById('pairsSelect');
+    if (pairsSelect) pairsSelect.value = 'EUR/USD';
+    
+    // UPDATE: Add candlestick option to dropdown
+    const chartTypeSelect = document.getElementById('chartTypeSelect');
+    if (chartTypeSelect) {
+        chartTypeSelect.innerHTML = `
+            <option value="line">📈 Line</option>
+            <option value="area">🟦 Area</option>
+            <option value="candlestick">🕯️ Candlestick</option>
+            <option value="trend">🎯 Bull/Bear Trend</option>
+        `;
+        chartTypeSelect.value = 'line';
+    }
+    
+    // Initialize smart polling system
+    initializeSmartPolling();
+    
+    // Initialize components
+    initializeIndicatorsPanel();
+    initializeColorPickers();
+    
+    // Start backend status monitoring
+    setInterval(checkBackendStatus, 5000);
+    
+    // Load initial data
+    changePyramidStyle('daily');
+    updateDashboard();
+    
+    // Keyboard shortcuts
+    document.addEventListener('keydown', handleKeyboardShortcuts);
+
+    console.log("✅ Dashboard initialized successfully");
+}
+
+function checkBackendStatus() {
+    if (!lastDataUpdateTime) return;
+    
+    const timeSinceLastUpdate = Date.now() - lastDataUpdateTime;
+    const isOffline = timeSinceLastUpdate > 35000; // 35 seconds without data
+    
+    if (isOffline && isBackendOnline && currentLiveIcon) {
+        console.log("🔴 Backend appears offline");
+        isBackendOnline = false;
+        currentLiveIcon.style.color = '#EF4444'; // Red for offline
+        currentLiveIcon.classList.remove('pulsing');
+        currentLiveIcon.classList.add('offline');
+    }
+}
+
+// Start the dashboard when DOM is loaded
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeDashboard);
+} else {
+    initializeDashboard();
+}
+
+console.log("🚀 MEGA FLOWZ Dashboard Script Loaded Successfully!");
+
 // ==================== SMART POLLING SYSTEM ====================
+
 function initializeSmartPolling() {
     console.log("🔄 Initializing Smart Polling System...");
     startPolling();
@@ -246,6 +320,7 @@ function getPollingStatus() {
 }
 
 // ==================== LOADING STATES MANAGEMENT ====================
+
 function showReloadingSign() {
     // Remove existing live icon
     if (currentLiveIcon) {
@@ -319,71 +394,878 @@ function showLiveIcon() {
     }
 }
 
-function checkBackendStatus() {
-    if (!lastDataUpdateTime) return;
+// ==================== PYRAMID FUNCTIONS ====================
+
+function setPyramidSize(size) {
+    document.querySelectorAll('.size-btn').forEach(btn => btn.classList.remove('active'));
+    event.target.classList.add('active');
+    pyramidDiv.className = 'pyramid ' + size;
+}
+
+function getBlockId(block) { return `${block.tf}_${block.time}`; }
+
+function shouldDisplayBlock(block) {
+    if (!timeframeVisibility[block.tf]) return false;
+    if (block.children && block.children.length > 0) {
+        return block.children.some(child => shouldDisplayBlock(child));
+    }
+    return true;
+}
+
+// UPDATED: Calculate pips with crypto detection
+function calculatePips(block) {
+    if (!block.H || !block.L) return 0;
     
-    const timeSinceLastUpdate = Date.now() - lastDataUpdateTime;
-    const isOffline = timeSinceLastUpdate > 35000; // 35 seconds without data
+    const high = parseFloat(block.H);
+    const low = parseFloat(block.L);
+    const range = high - low;
     
-    if (isOffline && isBackendOnline && currentLiveIcon) {
-        console.log("🔴 Backend appears offline");
-        isBackendOnline = false;
-        currentLiveIcon.style.color = '#EF4444'; // Red for offline
-        currentLiveIcon.classList.remove('pulsing');
-        currentLiveIcon.classList.add('offline');
+    // Detect pair type and apply correct pip calculation
+    if (currentPair.includes('JPY')) {
+        // JPY pairs: 2-3 decimal places, pip = 0.01
+        return Math.round(range * 100) + "pips";
+    } else if (currentPair.includes('BTC') || currentPair.includes('ETH') || currentPair.includes('XRP') || 
+               currentPair.includes('ADA') || currentPair.includes('DOT') || currentPair.includes('LTC')) {
+        // Crypto pairs: use points (raw price difference)
+        return Math.round(range) + "points";
+    } else {
+        // Most forex pairs: 4-5 decimal places, pip = 0.0001
+        return Math.round(range * 10000) + "pips";
     }
 }
 
-// ==================== INITIALIZATION ====================
-function initializeDashboard() {
-    console.log("🧠 Initializing MEGA FLOWZ Professional Dashboard...");
-    
-    // Set defaults
-    const pairsSelect = document.getElementById('pairsSelect');
-    if (pairsSelect) pairsSelect.value = 'EUR/USD';
-    
-    // UPDATE: Add candlestick option to dropdown
-    const chartTypeSelect = document.getElementById('chartTypeSelect');
-    if (chartTypeSelect) {
-        chartTypeSelect.innerHTML = `
-            <option value="line">📈 Line</option>
-            <option value="area">🟦 Area</option>
-            <option value="candlestick">🕯️ Candlestick</option>
-            <option value="trend">🎯 Bull/Bear Trend</option>
-        `;
-        chartTypeSelect.value = 'line';
+// UPDATED: Calculate completion progress with fixed expected totals and color coding
+function calculateProgress(block) {
+    if (!block.children || block.children.length === 0) {
+        return { hasProgress: false };
     }
     
-    // Initialize smart polling system
-    initializeSmartPolling();
+    // Get expected total for this timeframe
+    const expectedTotal = expectedChildCounts[block.tf] || block.children.length;
     
-    // Initialize components
-    initializeIndicatorsPanel();
-    initializeColorPickers();
+    // FIXED: Count completed children (ALL blocks with momentum, including neutral)
+    const completed = block.children.filter(child => 
+        child.momentum_summary  // ← Only check for momentum data, include neutral blocks
+    ).length;
     
-    // Start backend status monitoring
-    setInterval(checkBackendStatus, 5000);
+    // Determine status for color coding
+    let status = '';
+    if (completed === expectedTotal) {
+        status = 'complete'; // Green - fully complete
+    } else if (completed > 0) {
+        status = 'partial';  // Blue - partially complete
+    }
+    // No status if completed === 0
     
-    // Load initial data
-    changePyramidStyle('daily');
+    return {
+        hasProgress: expectedTotal > 0,
+        completed: completed,
+        total: expectedTotal, // Use fixed expected total, not visible count
+        status: status
+    };
+}
+
+// UPDATED: Create block with corrected pips, progress, and color coding
+function createBlock(block, level = 0) {
+    if (!shouldDisplayBlock(block)) return null;
+
+    const blockId = getBlockId(block);
+    const div = document.createElement('div');
+    div.className = `block ${block.dir === '🟢' ? 'green' : block.dir === '🔴' ? 'red' : 'gray'}`;
+    div.dataset.id = blockId;
+
+    const isExpanded = expandedBlocks.has(blockId);
+    const hasChildren = block.children && block.children.some(child => shouldDisplayBlock(child));
+    
+    // UPDATED: Calculate pips and progress with corrected logic
+    const pips = calculatePips(block);
+    const progressInfo = calculateProgress(block);
+
+    // UPDATED: Include corrected pips and progress with color coding
+    div.innerHTML = `
+        <div class="header-line">
+            <span class="toggle" onclick="toggleBlock('${blockId}', this)">
+                ${hasChildren ? (isExpanded ? '📂' : '📁') : '📄'} 
+                ${block.tf} ${block.range} ${block.dir}
+            </span>
+            <span class="block-metrics">
+                <span class="pips-value">${pips}</span>
+                ${progressInfo.hasProgress ? `
+                    <span class="progress-indicator ${progressInfo.status}">
+                        ${progressInfo.completed}/${progressInfo.total}
+                    </span>
+                ` : ''}
+            </span>
+            <span class="ohlc">O:${block.O} H:${block.H} L:${block.L} C:${block.C} V:${formatVolume(block.volume)}</span>
+        </div>
+        <div class="momentum-summary">${block.momentum_summary}</div>
+    `;
+
+    if (hasChildren) {
+        const children = document.createElement('div');
+        children.className = `children ${isExpanded ? '' : 'hidden'}`;
+        children.id = `children-${blockId}`;
+        
+        block.children.forEach(child => {
+            const childElement = createBlock(child, level + 1);
+            if (childElement) children.appendChild(childElement);
+        });
+        
+        if (children.children.length > 0) div.appendChild(children);
+    }
+    
+    div.addEventListener('click', function(e) {
+        e.stopPropagation();
+        
+        if (!e.target.classList.contains('toggle')) {
+            lastClickedPyramidBlock = block;
+            switchToChartWithTimeframe(block);
+        }
+    });
+    
+    return div;
+}
+
+window.toggleBlock = function(blockId, element) {
+    const children = document.getElementById(`children-${blockId}`);
+    if (!children) return;
+
+    const willExpand = children.classList.contains('hidden');
+    children.classList.toggle('hidden');
+
+    const icon = element.querySelector('span') || element;
+    icon.innerHTML = willExpand ? icon.innerHTML.replace('📁', '📂') : icon.innerHTML.replace('📂', '📁');
+    
+    if (willExpand) expandedBlocks.add(blockId);
+    else expandedBlocks.delete(blockId);
+};
+
+function switchToChartWithTimeframe(block) {
+    switchTab('chart');
+    
+    setTimeout(() => {
+        const timeframeSelect = document.getElementById('timeframeSelect');
+        if (timeframeSelect) {
+            timeframeSelect.value = block.tf;
+            loadChart(block.tf);
+        }
+    }, 150);
+}
+
+// UPDATED: Render function with better loading states
+function render(data) {
+    const scrollPos = window.scrollY;
+    pyramidDiv.innerHTML = '';
+    
+    if (!data || !data.blocks) {
+        pyramidDiv.innerHTML = '<div class="loading">📊 Loading pyramid data...</div>';
+        return;
+    }
+
+    if (status) status.textContent = `${currentPair} • ${pyramidStyleNames[currentPyramidStyle]}`;
+    if (updateInfo) updateInfo.textContent = `Last Updated: ${new Date().toLocaleString()}`;
+    
+    let visibleBlocksCount = 0;
+    data.blocks.forEach(block => {
+        const blockElement = createBlock(block);
+        if (blockElement) {
+            pyramidDiv.appendChild(blockElement);
+            visibleBlocksCount++;
+        }
+    });
+
+    if (visibleBlocksCount === 0) {
+        pyramidDiv.innerHTML = '<div class="loading">📊 Loading market data...</div>';
+    } else {
+        // Show live icon when data is successfully loaded
+        showLiveIcon();
+    }
+
+    window.scrollTo(0, scrollPos);
+}
+
+// UPDATED: Better error handling in updateDashboard
+function updateDashboard() {
+    fetch(`/api/pyramid?pair=${currentPair}&pyramid_style=${currentPyramidStyle}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(render)
+        .catch(error => {
+            console.error('Dashboard update error:', error);
+            if (status) status.textContent = '🔄 Updating market data...';
+            if (updateInfo) updateInfo.textContent = 'Connecting to data source...';
+            
+            // Keep existing blocks visible during errors
+            if (pyramidDiv.children.length === 0) {
+                pyramidDiv.innerHTML = '<div class="loading">📊 Connecting to market data...</div>';
+            }
+        })
+        .finally(() => {
+            // Always hide reloading sign after attempt
+            hideReloadingSign();
+        });
+}
+
+function changePyramidStyle(style) {
+    currentPyramidStyle = style;
+    
+    const selectedStructure = pyramidStructures[style];
+    Object.keys(timeframeVisibility).forEach(tf => {
+        timeframeVisibility[tf] = selectedStructure.includes(tf);
+    });
+    
+    const dropdown = document.getElementById('pyramidStyleSelect');
+    if (dropdown) dropdown.value = style;
+    
+    updateBackendSettings();
+    updateDashboard();
+}
+
+function updateBackendSettings() {
+    const settings = {
+        symbol: currentPair.replace('/', ''),
+        pyramid_style: currentPyramidStyle
+    };
+    
+    fetch('/api/update-settings', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(settings)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            console.log('✅ Backend settings updated:', data.message);
+        } else {
+            console.error('❌ Backend settings update failed:', data.error);
+        }
+    })
+    .catch(error => {
+        console.error('❌ Backend settings sync error:', error);
+    });
+}
+
+// UPDATED: changePair with better loading states
+function changePair(pair) {
+    currentPair = pair;
+    const pairsSelect = document.getElementById('pairsSelect');
+    if (pairsSelect) pairsSelect.value = pair;
+    
+    updateBackendSettings();
     updateDashboard();
     
-    // Keyboard shortcuts
-    document.addEventListener('keydown', handleKeyboardShortcuts);
-
-    console.log("✅ Dashboard initialized successfully");
+    if (currentTimeframe) {
+        loadChart(currentTimeframe);
+    }
 }
 
-// ==================== VOLUME FORMATTING ====================
-function formatVolume(volume) {
-    if (!volume && volume !== 0) return '--';
-    const numVolume = parseFloat(volume);
-    if (numVolume >= 1000000) return `${(numVolume / 1000000).toFixed(1)}M`;
-    if (numVolume >= 1000) return `${(numVolume / 1000).toFixed(1)}K`;
-    return numVolume.toFixed(0);
+function switchTab(tabName) {
+    document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+    
+    const targetTab = document.getElementById(tabName + '-tab');
+    if (targetTab) targetTab.classList.add('active');
+    
+    event.target.classList.add('active');
+    
+    if (tabName === 'chart') {
+        setTimeout(() => {
+            if (!currentChart) {
+                loadChart(currentTimeframe);
+            }
+        }, 100);
+    }
 }
 
-// ==================== INDICATOR MANAGEMENT ====================
+// ==================== CHART SYSTEM ====================
+
+// Chart rendering and datasets
+function renderProfessionalChart(chartData, timeframe, symbol, indicators, indicators_data) {
+    const ctx = document.getElementById('mainChart').getContext('2d');
+    
+    if (currentChart) currentChart.destroy();
+
+    currentIndicatorValues = indicators || {};
+    
+    const professionalTheme = {
+        primary: chartColors.line,
+        background: chartColors.areaFill,
+        grid: '#1E293B',
+        text: '#F1F5F9',
+        textSecondary: '#94A3B8',
+        accent: '#8B5CF6'
+    };
+
+    let datasets = [];
+
+    if (currentChartType === 'line') {
+        datasets = createLineDataset(chartData, symbol, professionalTheme);
+    } else if (currentChartType === 'area') {
+        datasets = createAreaDataset(chartData, symbol, professionalTheme);
+    } else if (currentChartType === 'candlestick') {
+        datasets = createCandlestickDataset(chartData, symbol, professionalTheme);
+    } else if (currentChartType === 'trend') {
+        datasets = createLineDataset(chartData, symbol, professionalTheme);
+    }
+
+    datasets = datasets.concat(createIndicatorDatasets(indicators_data, professionalTheme));
+
+    const chartType = currentChartType === 'candlestick' ? 'candlestick' : 'line';
+    
+    currentChart = new Chart(ctx, {
+        type: chartType,
+        data: { datasets: datasets },
+        options: getEnhancedChartOptions(timeframe, professionalTheme)
+    });
+
+    initializeAxisIndicators();
+    addCrosshairListeners();
+    renderIndicatorsList();
+    
+    const latestPrice = chartData.length > 0 ? chartData[chartData.length - 1].y : 0;
+    updateCurrentPrice(latestPrice);
+    
+    console.log(`✅ Chart rendered: ${symbol} ${timeframe} (${currentChartType})`);
+}
+
+function loadChart(timeframe = 'H1') {
+    const chartStatus = document.getElementById('chartStatus');
+    if (!chartStatus) return;
+    
+    chartStatus.textContent = '🔄 Loading...';
+    
+    const indicatorParams = buildIndicatorParameters();
+    
+    fetch(`/api/chart-data/${timeframe}?pair=${currentPair}&pyramid_style=${currentPyramidStyle}${indicatorParams}`)
+        .then(response => {
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            return response.json();
+        })
+        .then(data => {
+            if (data.error) {
+                chartStatus.textContent = `❌ ${data.error}`;
+                return;
+            }
+            
+            renderProfessionalChart(data.data, timeframe, currentPair, data.indicators, data.indicators_data);
+            chartStatus.textContent = `✅ ${currentPair} ${timeframe}`;
+            currentTimeframe = timeframe;
+            
+            if (lastClickedPyramidBlock) {
+                setTimeout(() => {
+                    triggerTooltipAtTime(lastClickedPyramidBlock.time);
+                    lastClickedPyramidBlock = null;
+                }, 500);
+            }
+        })
+        .catch(error => {
+            console.error('Chart loading error:', error);
+            chartStatus.textContent = '❌ Failed to load chart data';
+        });
+}
+
+function buildIndicatorParameters() {
+    let params = '';
+    activeIndicators.forEach((config, indicatorId) => {
+        const baseType = indicatorId.split('_')[0];
+        
+        switch(baseType) {
+            case 'sma': case 'ema': case 'rsi':
+                params += `&${baseType}_period=${config.period}`;
+                break;
+            case 'macd':
+                params += `&${baseType}_fast=${config.fastPeriod}&${baseType}_slow=${config.slowPeriod}&${baseType}_signal=${config.signalPeriod}`;
+                break;
+            case 'bollinger':
+                params += `&${baseType}_period=${config.period}&${baseType}_std=${config.stdDev}`;
+                break;
+            case 'stochastic':
+                params += `&${baseType}_k=${config.kPeriod}&${baseType}_k_smooth=${config.kSmooth}&${baseType}_d_smooth=${config.dSmooth}`;
+                break;
+        }
+        
+        params += `&${baseType}_instance=${config.instanceNumber}`;
+    });
+    
+    return params;
+}
+
+// Chart dataset creators
+function createCandlestickDataset(priceData, symbol, theme) {
+    return [{
+        label: `${symbol} Price`,
+        data: priceData,
+        borderColor: theme.primary,
+        backgroundColor: 'transparent',
+        borderWidth: 2,
+        pointRadius: 0,
+        pointHoverRadius: 3,
+        tension: 0.1,
+        yAxisID: 'y',
+        fill: false
+    }];
+}
+
+function createLineDataset(priceData, symbol, theme) {
+    if (currentChartType === 'trend') {
+        return [{
+            label: `${symbol} Price`, data: priceData,
+            segment: { borderColor: (ctx) => {
+                if (ctx.p0.parsed.y === ctx.p1.parsed.y) return theme.primary;
+                return ctx.p1.parsed.y > ctx.p0.parsed.y ? chartColors.bull : chartColors.bear;
+            }},
+            borderWidth: 2, pointRadius: 0, pointHoverRadius: 3, tension: 0.1, yAxisID: 'y', fill: false
+        }];
+    } else {
+        return [{
+            label: `${symbol} Price`, data: priceData, borderColor: theme.primary, backgroundColor: 'transparent',
+            borderWidth: 2, pointRadius: 0, pointHoverRadius: 3, tension: 0.1, yAxisID: 'y', fill: false
+        }];
+    }
+}
+
+function createAreaDataset(priceData, symbol, theme) {
+    return [{
+        label: `${symbol} Price`, data: priceData, borderColor: theme.primary, backgroundColor: theme.background,
+        borderWidth: 2, pointRadius: 0, pointHoverRadius: 3, tension: 0.1, yAxisID: 'y',
+        fill: { target: 'origin', above: theme.background }
+    }];
+}
+
+function createIndicatorDatasets(indicators_data, theme) {
+    const datasets = [];
+    if (!indicators_data) return datasets;
+    
+    activeIndicators.forEach((config, indicatorId) => {
+        if (!config.visible) return;
+        const baseType = indicatorId.split('_')[0];
+        
+        switch(baseType) {
+            case 'bollinger':
+                if (indicators_data.bollinger) {
+                    const bb = indicators_data.bollinger;
+                    datasets.push(
+                        { label: `${config.name} Upper`, data: bb.upper, borderColor: config.color, borderWidth: 1, pointRadius: 0, yAxisID: 'y', fill: false },
+                        { label: `${config.name} Middle`, data: bb.middle, borderColor: config.color, borderWidth: 1.5, pointRadius: 0, yAxisID: 'y', fill: false },
+                        { label: `${config.name} Lower`, data: bb.lower, borderColor: config.color, borderWidth: 1, pointRadius: 0, yAxisID: 'y', fill: false }
+                    );
+                }
+                break;
+            case 'stochastic':
+                if (indicators_data.stoch_k) {
+                    datasets.push({ label: `${config.name} %K`, data: indicators_data.stoch_k, borderColor: config.color, borderWidth: 1.5, pointRadius: 0, yAxisID: 'y2', fill: false });
+                }
+                if (indicators_data.stoch_d) {
+                    datasets.push({ label: `${config.name} %D`, data: indicators_data.stoch_d, borderColor: config.color, borderWidth: 1.5, borderDash: [5, 5], pointRadius: 0, yAxisID: 'y2', fill: false });
+                }
+                break;
+            case 'supportresistance':
+                if (indicators_data.support_resistance) {
+                    datasets.push({ label: 'Support/Resistance', data: [], srLevels: indicators_data.support_resistance, supportColor: config.supportColor, resistanceColor: config.resistanceColor });
+                }
+                break;
+            default:
+                const instanceNumber = config.instanceNumber;
+                const dataKeys = [`${baseType}_${config.period}`, `${baseType}_${instanceNumber}`, baseType, `${baseType}_20`, `${baseType}_12`];
+                
+                let indicatorData = null;
+                for (const key of dataKeys) {
+                    if (indicators_data[key]) {
+                        indicatorData = indicators_data[key];
+                        break;
+                    }
+                }
+                
+                if (indicatorData) {
+                    datasets.push({
+                        label: `${config.name} #${instanceNumber}`, data: indicatorData, borderColor: config.color, borderWidth: 1.5,
+                        borderDash: baseType === 'ema' ? [2, 2] : [0, 0], pointRadius: 0, tension: 0, yAxisID: config.yAxis || 'y', fill: false
+                    });
+                }
+                break;
+        }
+    });
+
+    return datasets;
+}
+
+// Chart options and configuration
+function getEnhancedChartOptions(timeframe, theme) {
+    return {
+        responsive: true, 
+        maintainAspectRatio: false,
+        interaction: { 
+            mode: 'nearest', 
+            intersect: false, 
+            axis: 'xy' 
+        },
+        plugins: {
+            legend: {
+                display: false
+            },
+            tooltip: {
+                mode: 'nearest',
+                intersect: false,
+                backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                titleColor: theme.text,
+                bodyColor: theme.textSecondary,
+                borderColor: theme.grid,
+                borderWidth: 1,
+                cornerRadius: 6,
+                padding: 12,
+                callbacks: {
+                    title: function(context) {
+                        const date = new Date(context[0].parsed.x);
+                        return date.toLocaleDateString('en-US', {
+                            weekday: 'short',
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: false
+                        });
+                    },
+                    label: function(context) {
+                        let label = context.dataset.label || '';
+                        if (label) label += ': ';
+                        if (context.parsed.y !== null) {
+                            label += new Intl.NumberFormat('en-US', { 
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 5 
+                            }).format(context.parsed.y);
+                        }
+                        return label;
+                    }
+                }
+            },
+            zoom: {
+                zoom: {
+                    wheel: { enabled: true, speed: 0.1 },
+                    pinch: { enabled: true },
+                    mode: 'xy',
+                    scaleMode: 'xy'
+                },
+                pan: {
+                    enabled: true,
+                    mode: 'xy'
+                }
+            }
+        },
+        scales: {
+            x: {
+                type: 'time',
+                time: {
+                    unit: getProfessionalTimeUnit(timeframe),
+                    displayFormats: getProfessionalTimeFormats(timeframe)
+                },
+                grid: { 
+                    color: theme.grid,
+                    drawBorder: false
+                },
+                ticks: { 
+                    color: theme.textSecondary,
+                    maxRotation: 0,
+                    autoSkip: true,
+                    maxTicksLimit: 8
+                },
+                border: { display: false }
+            },
+            y: {
+                position: 'right',
+                grid: { 
+                    color: theme.grid,
+                    drawBorder: false
+                },
+                ticks: { 
+                    color: theme.textSecondary,
+                    callback: (value) => value.toFixed(5),
+                    maxTicksLimit: 6
+                },
+                border: { display: false }
+            },
+            y2: {
+                type: 'linear',
+                position: 'left',
+                grid: { drawOnChartArea: false },
+                ticks: { 
+                    color: '#F59E0B',
+                    callback: (value) => value.toFixed(2),
+                    maxTicksLimit: 5
+                },
+                border: { display: false },
+                min: 0,
+                max: 100
+            }
+        }
+    };
+}
+
+// Crosshair and interaction
+function initializeAxisIndicators() {
+    if (axisIndicators.yIndicator) axisIndicators.yIndicator.remove();
+    if (axisIndicators.xIndicator) axisIndicators.xIndicator.remove();
+    
+    const chartWrapper = document.querySelector('.chart-wrapper');
+    if (!chartWrapper) return;
+    
+    const yIndicator = document.createElement('div');
+    yIndicator.className = 'axis-indicator y-axis-indicator';
+    yIndicator.id = 'yAxisIndicator';
+    yIndicator.style.display = 'none';
+    
+    const xIndicator = document.createElement('div');
+    xIndicator.className = 'axis-indicator x-axis-indicator';
+    xIndicator.id = 'xAxisIndicator';
+    xIndicator.style.display = 'none';
+    
+    chartWrapper.appendChild(yIndicator);
+    chartWrapper.appendChild(xIndicator);
+    
+    axisIndicators.yIndicator = yIndicator;
+    axisIndicators.xIndicator = xIndicator;
+}
+
+function updateAxisIndicators(x, y, price, time) {
+    if (!axisIndicators.yIndicator || !axisIndicators.xIndicator) return;
+    
+    const chartArea = currentChart?.chartArea;
+    if (!chartArea) return;
+    
+    if (price !== null && y >= chartArea.top && y <= chartArea.bottom) {
+        axisIndicators.yIndicator.textContent = price.toFixed(5);
+        axisIndicators.yIndicator.style.top = `${y}px`;
+        axisIndicators.yIndicator.style.right = '0px';
+        axisIndicators.yIndicator.style.display = 'block';
+    } else axisIndicators.yIndicator.style.display = 'none';
+    
+    if (time && x >= chartArea.left && x <= chartArea.right) {
+        axisIndicators.xIndicator.textContent = time;
+        axisIndicators.xIndicator.style.left = `${x}px`;
+        axisIndicators.xIndicator.style.bottom = '0px';
+        axisIndicators.xIndicator.style.display = 'block';
+    } else axisIndicators.xIndicator.style.display = 'none';
+}
+
+function hideAxisIndicators() {
+    if (axisIndicators.yIndicator) axisIndicators.yIndicator.style.display = 'none';
+    if (axisIndicators.xIndicator) axisIndicators.xIndicator.style.display = 'none';
+}
+
+function addCrosshairListeners() {
+    const canvas = document.getElementById('mainChart');
+    if (!canvas) return;
+
+    crosshairVisible = false;
+    crosshairX = 0;
+    crosshairY = 0;
+    crosshairPrice = null;
+
+    canvas.addEventListener('mousemove', function(event) {
+        if (tooltipLocked) return;
+        if (!crosshairEnabled || !currentChart) return;
+        
+        const rect = canvas.getBoundingClientRect();
+        crosshairX = event.clientX - rect.left;
+        crosshairY = event.clientY - rect.top;
+        crosshairVisible = true;
+        
+        const chartArea = currentChart.chartArea;
+        const yScale = currentChart.scales.y;
+        
+        if (yScale && chartArea) {
+            const pixelRange = chartArea.bottom - chartArea.top;
+            const valueRange = yScale.max - yScale.min;
+            const value = yScale.max - ((crosshairY - chartArea.top) / pixelRange) * valueRange;
+            crosshairPrice = value;
+            
+            updateCurrentPrice(value);
+            
+            const xScale = currentChart.scales.x;
+            const timeValue = xScale.getValueForPixel(crosshairX);
+            const timeText = timeValue ? new Date(timeValue).toLocaleTimeString() : '';
+            updateAxisIndicators(crosshairX, crosshairY, value, timeText);
+        }
+        
+        if (currentChart) currentChart.draw();
+    });
+
+    canvas.addEventListener('mouseleave', function() {
+        crosshairVisible = false;
+        crosshairPrice = null;
+        hideAxisIndicators();
+        if (currentChart) currentChart.draw();
+    });
+
+    if (currentChart) {
+        const originalDraw = currentChart.draw;
+        currentChart.draw = function() {
+            originalDraw.call(this);
+            if (crosshairEnabled) drawCrosshair();
+        };
+    }
+}
+
+function drawCrosshair() {
+    if (!crosshairEnabled || !crosshairVisible || !currentChart) return;
+
+    const ctx = currentChart.ctx;
+    const chartArea = currentChart.chartArea;
+    
+    if (crosshairX < chartArea.left || crosshairX > chartArea.right || crosshairY < chartArea.top || crosshairY > chartArea.bottom) return;
+
+    ctx.save();
+    ctx.strokeStyle = '#F59E0B';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([5, 5]);
+    
+    ctx.beginPath();
+    ctx.moveTo(crosshairX, chartArea.top);
+    ctx.lineTo(crosshairX, chartArea.bottom);
+    ctx.stroke();
+    
+    ctx.beginPath();
+    ctx.moveTo(chartArea.left, crosshairY);
+    ctx.lineTo(chartArea.right, crosshairY);
+    ctx.stroke();
+    
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#F59E0B';
+    ctx.beginPath();
+    ctx.arc(crosshairX, crosshairY, 4, 0, 2 * Math.PI);
+    ctx.fill();
+    ctx.restore();
+}
+
+// Tooltip positioning
+function triggerTooltipAtTime(timestamp) {
+    if (!currentChart) return;
+    
+    const xScale = currentChart.scales.x;
+    if (!xScale) return;
+    
+    const pixel = xScale.getPixelForValue(new Date(timestamp));
+    const chartArea = currentChart.chartArea;
+    if (!chartArea) return;
+    
+    if (pixel < chartArea.left || pixel > chartArea.right) return;
+    
+    const canvas = document.getElementById('mainChart');
+    const mockEvent = new MouseEvent('mousemove', {
+        clientX: canvas.getBoundingClientRect().left + pixel,
+        clientY: canvas.getBoundingClientRect().top + chartArea.top + (chartArea.bottom - chartArea.top) / 2
+    });
+    
+    canvas.dispatchEvent(mockEvent);
+    console.log(`🎯 Triggered tooltip at timestamp: ${new Date(timestamp).toLocaleString()}`);
+}
+
+// Chart controls and utilities
+function setChartType(type) {
+    currentChartType = type;
+    
+    const chartTypeSelect = document.getElementById('chartTypeSelect');
+    if (chartTypeSelect) {
+        chartTypeSelect.value = type;
+    }
+    
+    if (currentTimeframe) {
+        loadChart(currentTimeframe);
+    }
+}
+
+function updateChartTimeframe() {
+    const timeframe = document.getElementById('timeframeSelect').value;
+    loadChart(timeframe);
+}
+
+function toggleCrosshair() {
+    crosshairEnabled = !crosshairEnabled;
+    const crosshairBtn = document.querySelector('.control-btn');
+    
+    if (crosshairBtn && crosshairBtn.textContent.includes('Cross')) {
+        if (crosshairEnabled) {
+            crosshairBtn.innerHTML = '⊕ Cross ON';
+            crosshairBtn.classList.add('active');
+        } else {
+            crosshairBtn.innerHTML = '⊕ Cross OFF';
+            crosshairBtn.classList.remove('active');
+        }
+    }
+    
+    if (currentChart) currentChart.draw();
+}
+
+function downloadChart() {
+    if (!currentChart) return;
+    
+    const canvas = document.getElementById('mainChart');
+    const link = document.createElement('a');
+    link.download = `chart-${currentPair}-${currentTimeframe}-${new Date().toISOString().split('T')[0]}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+}
+
+function zoomIn() {
+    if (currentChart) {
+        currentChart.zoom(1.2);
+    }
+}
+
+function zoomOut() {
+    if (currentChart) {
+        currentChart.zoom(0.8);
+    }
+}
+
+function resetZoom() {
+    if (currentChart) {
+        currentChart.resetZoom();
+    }
+}
+
+// Chart time utilities
+function getProfessionalTimeUnit(timeframe) {
+    const units = {
+        'M1': 'minute', 'M5': 'minute', 'M15': 'minute',
+        'H1': 'hour', 'H4': 'hour', 'D1': 'day'
+    };
+    return units[timeframe] || 'hour';
+}
+
+function getProfessionalTimeFormats(timeframe) {
+    return {
+        minute: 'HH:mm',
+        hour: 'MMM dd HH:mm',
+        day: 'MMM dd, yyyy'
+    };
+}
+
+// ==================== INDICATORS MANAGEMENT ====================
+
+function initializeIndicatorsPanel() {
+    renderIndicatorsList();
+}
+
+function toggleIndicatorsPanel() {
+    const panel = document.getElementById('indicatorsPanel');
+    const toggleBtn = document.querySelector('.panel-toggle');
+    
+    if (panel.classList.contains('collapsed')) {
+        panel.classList.remove('collapsed');
+        if (toggleBtn) toggleBtn.innerHTML = '◀';
+    } else {
+        panel.classList.add('collapsed');
+        if (toggleBtn) toggleBtn.innerHTML = '▶';
+    }
+}
+
 function addIndicatorFromDropdown(indicatorType) {
     if (!indicatorType) return;
     
@@ -647,7 +1529,18 @@ function getIndicatorDisplayValue(indicatorId, config) {
     }
 }
 
-// ==================== COLOR MANAGEMENT ====================
+// ==================== UTILITIES & HELPERS ====================
+
+// Volume formatting
+function formatVolume(volume) {
+    if (!volume && volume !== 0) return '--';
+    const numVolume = parseFloat(volume);
+    if (numVolume >= 1000000) return `${(numVolume / 1000000).toFixed(1)}M`;
+    if (numVolume >= 1000) return `${(numVolume / 1000).toFixed(1)}K`;
+    return numVolume.toFixed(0);
+}
+
+// Color management
 function initializeColorPickers() {
     updateColorPickers();
 }
@@ -681,571 +1574,25 @@ function updateChartColors() {
     }
 }
 
-// ==================== CHART LOADING ====================
-function loadChart(timeframe = 'H1') {
-    const chartStatus = document.getElementById('chartStatus');
-    if (!chartStatus) return;
-    
-    chartStatus.textContent = '🔄 Loading...';
-    
-    const indicatorParams = buildIndicatorParameters();
-    
-    fetch(`/api/chart-data/${timeframe}?pair=${currentPair}&pyramid_style=${currentPyramidStyle}${indicatorParams}`)
-        .then(response => {
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            return response.json();
-        })
-        .then(data => {
-            if (data.error) {
-                chartStatus.textContent = `❌ ${data.error}`;
-                return;
-            }
-            
-            renderProfessionalChart(data.data, timeframe, currentPair, data.indicators, data.indicators_data);
-            chartStatus.textContent = `✅ ${currentPair} ${timeframe}`;
-            currentTimeframe = timeframe;
-            
-            if (lastClickedPyramidBlock) {
-                setTimeout(() => {
-                    triggerTooltipAtTime(lastClickedPyramidBlock.time);
-                    lastClickedPyramidBlock = null;
-                }, 500);
-            }
-        })
-        .catch(error => {
-            console.error('Chart loading error:', error);
-            chartStatus.textContent = '❌ Failed to load chart data';
-        });
-}
-
-function buildIndicatorParameters() {
-    let params = '';
-    activeIndicators.forEach((config, indicatorId) => {
-        const baseType = indicatorId.split('_')[0];
+// Current price display
+function updateCurrentPrice(price) {
+    const currentPriceElement = document.getElementById('currentPrice');
+    if (currentPriceElement && price) {
+        currentPriceElement.textContent = typeof price === 'number' ? price.toFixed(5) : price;
         
-        switch(baseType) {
-            case 'sma': case 'ema': case 'rsi':
-                params += `&${baseType}_period=${config.period}`;
-                break;
-            case 'macd':
-                params += `&${baseType}_fast=${config.fastPeriod}&${baseType}_slow=${config.slowPeriod}&${baseType}_signal=${config.signalPeriod}`;
-                break;
-            case 'bollinger':
-                params += `&${baseType}_period=${config.period}&${baseType}_std=${config.stdDev}`;
-                break;
-            case 'stochastic':
-                params += `&${baseType}_k=${config.kPeriod}&${baseType}_k_smooth=${config.kSmooth}&${baseType}_d_smooth=${config.dSmooth}`;
-                break;
+        const lastPrice = parseFloat(currentPriceElement.dataset.lastPrice) || price;
+        if (price > lastPrice) {
+            currentPriceElement.style.color = 'var(--green)';
+            currentPriceElement.style.borderColor = 'var(--green-border)';
+        } else if (price < lastPrice) {
+            currentPriceElement.style.color = 'var(--red)';
+            currentPriceElement.style.borderColor = 'var(--red-border)';
         }
-        
-        params += `&${baseType}_instance=${config.instanceNumber}`;
-    });
-    
-    return params;
-}
-
-// ==================== TOOLTIP POSITIONING ====================
-function triggerTooltipAtTime(timestamp) {
-    if (!currentChart) return;
-    
-    const xScale = currentChart.scales.x;
-    if (!xScale) return;
-    
-    const pixel = xScale.getPixelForValue(new Date(timestamp));
-    const chartArea = currentChart.chartArea;
-    if (!chartArea) return;
-    
-    if (pixel < chartArea.left || pixel > chartArea.right) return;
-    
-    const canvas = document.getElementById('mainChart');
-    const mockEvent = new MouseEvent('mousemove', {
-        clientX: canvas.getBoundingClientRect().left + pixel,
-        clientY: canvas.getBoundingClientRect().top + chartArea.top + (chartArea.bottom - chartArea.top) / 2
-    });
-    
-    canvas.dispatchEvent(mockEvent);
-    console.log(`🎯 Triggered tooltip at timestamp: ${new Date(timestamp).toLocaleString()}`);
-}
-
-// ==================== CHART RENDERING ====================
-function renderProfessionalChart(chartData, timeframe, symbol, indicators, indicators_data) {
-    const ctx = document.getElementById('mainChart').getContext('2d');
-    
-    if (currentChart) currentChart.destroy();
-
-    currentIndicatorValues = indicators || {};
-    
-    const professionalTheme = {
-        primary: chartColors.line,
-        background: chartColors.areaFill,
-        grid: '#1E293B',
-        text: '#F1F5F9',
-        textSecondary: '#94A3B8',
-        accent: '#8B5CF6'
-    };
-
-    let datasets = [];
-
-    // UPDATE: Handle candlestick chart type
-    if (currentChartType === 'line') {
-        datasets = createLineDataset(chartData, symbol, professionalTheme);
-    } else if (currentChartType === 'area') {
-        datasets = createAreaDataset(chartData, symbol, professionalTheme);
-    } else if (currentChartType === 'candlestick') {
-        datasets = createCandlestickDataset(chartData, symbol, professionalTheme);
-    } else if (currentChartType === 'trend') {
-        datasets = createLineDataset(chartData, symbol, professionalTheme);
-    }
-
-    datasets = datasets.concat(createIndicatorDatasets(indicators_data, professionalTheme));
-
-    // UPDATE: Set correct chart type for candlesticks
-    const chartType = currentChartType === 'candlestick' ? 'candlestick' : 'line';
-    
-    currentChart = new Chart(ctx, {
-        type: chartType,
-        data: { datasets: datasets },
-        options: getEnhancedChartOptions(timeframe, professionalTheme)
-    });
-
-    initializeAxisIndicators();
-    addCrosshairListeners();
-    renderIndicatorsList();
-    
-    const latestPrice = chartData.length > 0 ? chartData[chartData.length - 1].y : 0;
-    updateCurrentPrice(latestPrice);
-    
-    console.log(`✅ Chart rendered: ${symbol} ${timeframe} (${currentChartType})`);
-}
-
-// NEW: Candlestick dataset function
-function createCandlestickDataset(priceData, symbol, theme) {
-    // For now, create line dataset until backend supports OHLC
-    // This will be updated when backend sends proper OHLC data
-    return [{
-        label: `${symbol} Price`,
-        data: priceData,
-        borderColor: theme.primary,
-        backgroundColor: 'transparent',
-        borderWidth: 2,
-        pointRadius: 0,
-        pointHoverRadius: 3,
-        tension: 0.1,
-        yAxisID: 'y',
-        fill: false
-    }];
-}
-
-function createIndicatorDatasets(indicators_data, theme) {
-    const datasets = [];
-    if (!indicators_data) return datasets;
-    
-    activeIndicators.forEach((config, indicatorId) => {
-        if (!config.visible) return;
-        const baseType = indicatorId.split('_')[0];
-        
-        switch(baseType) {
-            case 'bollinger':
-                if (indicators_data.bollinger) {
-                    const bb = indicators_data.bollinger;
-                    datasets.push(
-                        { label: `${config.name} Upper`, data: bb.upper, borderColor: config.color, borderWidth: 1, pointRadius: 0, yAxisID: 'y', fill: false },
-                        { label: `${config.name} Middle`, data: bb.middle, borderColor: config.color, borderWidth: 1.5, pointRadius: 0, yAxisID: 'y', fill: false },
-                        { label: `${config.name} Lower`, data: bb.lower, borderColor: config.color, borderWidth: 1, pointRadius: 0, yAxisID: 'y', fill: false }
-                    );
-                }
-                break;
-            case 'stochastic':
-                if (indicators_data.stoch_k) {
-                    datasets.push({ label: `${config.name} %K`, data: indicators_data.stoch_k, borderColor: config.color, borderWidth: 1.5, pointRadius: 0, yAxisID: 'y2', fill: false });
-                }
-                if (indicators_data.stoch_d) {
-                    datasets.push({ label: `${config.name} %D`, data: indicators_data.stoch_d, borderColor: config.color, borderWidth: 1.5, borderDash: [5, 5], pointRadius: 0, yAxisID: 'y2', fill: false });
-                }
-                break;
-            case 'supportresistance':
-                if (indicators_data.support_resistance) {
-                    datasets.push({ label: 'Support/Resistance', data: [], srLevels: indicators_data.support_resistance, supportColor: config.supportColor, resistanceColor: config.resistanceColor });
-                }
-                break;
-            default:
-                const instanceNumber = config.instanceNumber;
-                const dataKeys = [`${baseType}_${config.period}`, `${baseType}_${instanceNumber}`, baseType, `${baseType}_20`, `${baseType}_12`];
-                
-                let indicatorData = null;
-                for (const key of dataKeys) {
-                    if (indicators_data[key]) {
-                        indicatorData = indicators_data[key];
-                        break;
-                    }
-                }
-                
-                if (indicatorData) {
-                    datasets.push({
-                        label: `${config.name} #${instanceNumber}`, data: indicatorData, borderColor: config.color, borderWidth: 1.5,
-                        borderDash: baseType === 'ema' ? [2, 2] : [0, 0], pointRadius: 0, tension: 0, yAxisID: config.yAxis || 'y', fill: false
-                    });
-                }
-                break;
-        }
-    });
-
-    return datasets;
-}
-
-function createLineDataset(priceData, symbol, theme) {
-    if (currentChartType === 'trend') {
-        return [{
-            label: `${symbol} Price`, data: priceData,
-            segment: { borderColor: (ctx) => {
-                if (ctx.p0.parsed.y === ctx.p1.parsed.y) return theme.primary;
-                return ctx.p1.parsed.y > ctx.p0.parsed.y ? chartColors.bull : chartColors.bear;
-            }},
-            borderWidth: 2, pointRadius: 0, pointHoverRadius: 3, tension: 0.1, yAxisID: 'y', fill: false
-        }];
-    } else {
-        return [{
-            label: `${symbol} Price`, data: priceData, borderColor: theme.primary, backgroundColor: 'transparent',
-            borderWidth: 2, pointRadius: 0, pointHoverRadius: 3, tension: 0.1, yAxisID: 'y', fill: false
-        }];
+        currentPriceElement.dataset.lastPrice = price;
     }
 }
 
-function createAreaDataset(priceData, symbol, theme) {
-    return [{
-        label: `${symbol} Price`, data: priceData, borderColor: theme.primary, backgroundColor: theme.background,
-        borderWidth: 2, pointRadius: 0, pointHoverRadius: 3, tension: 0.1, yAxisID: 'y',
-        fill: { target: 'origin', above: theme.background }
-    }];
-}
-
-// ==================== CHART CONTROLS & UTILITIES ====================
-function initializeAxisIndicators() {
-    if (axisIndicators.yIndicator) axisIndicators.yIndicator.remove();
-    if (axisIndicators.xIndicator) axisIndicators.xIndicator.remove();
-    
-    const chartWrapper = document.querySelector('.chart-wrapper');
-    if (!chartWrapper) return;
-    
-    const yIndicator = document.createElement('div');
-    yIndicator.className = 'axis-indicator y-axis-indicator';
-    yIndicator.id = 'yAxisIndicator';
-    yIndicator.style.display = 'none';
-    
-    const xIndicator = document.createElement('div');
-    xIndicator.className = 'axis-indicator x-axis-indicator';
-    xIndicator.id = 'xAxisIndicator';
-    xIndicator.style.display = 'none';
-    
-    chartWrapper.appendChild(yIndicator);
-    chartWrapper.appendChild(xIndicator);
-    
-    axisIndicators.yIndicator = yIndicator;
-    axisIndicators.xIndicator = xIndicator;
-}
-
-function updateAxisIndicators(x, y, price, time) {
-    if (!axisIndicators.yIndicator || !axisIndicators.xIndicator) return;
-    
-    const chartArea = currentChart?.chartArea;
-    if (!chartArea) return;
-    
-    if (price !== null && y >= chartArea.top && y <= chartArea.bottom) {
-        axisIndicators.yIndicator.textContent = price.toFixed(5);
-        axisIndicators.yIndicator.style.top = `${y}px`;
-        axisIndicators.yIndicator.style.right = '0px';
-        axisIndicators.yIndicator.style.display = 'block';
-    } else axisIndicators.yIndicator.style.display = 'none';
-    
-    if (time && x >= chartArea.left && x <= chartArea.right) {
-        axisIndicators.xIndicator.textContent = time;
-        axisIndicators.xIndicator.style.left = `${x}px`;
-        axisIndicators.xIndicator.style.bottom = '0px';
-        axisIndicators.xIndicator.style.display = 'block';
-    } else axisIndicators.xIndicator.style.display = 'none';
-}
-
-function hideAxisIndicators() {
-    if (axisIndicators.yIndicator) axisIndicators.yIndicator.style.display = 'none';
-    if (axisIndicators.xIndicator) axisIndicators.xIndicator.style.display = 'none';
-}
-
-function toggleCrosshair() {
-    crosshairEnabled = !crosshairEnabled;
-    const crosshairBtn = document.querySelector('.control-btn');
-    
-    if (crosshairBtn && crosshairBtn.textContent.includes('Cross')) {
-        if (crosshairEnabled) {
-            crosshairBtn.innerHTML = '⊕ Cross ON';
-            crosshairBtn.classList.add('active');
-        } else {
-            crosshairBtn.innerHTML = '⊕ Cross OFF';
-            crosshairBtn.classList.remove('active');
-        }
-    }
-    
-    if (currentChart) currentChart.draw();
-}
-
-function addCrosshairListeners() {
-    const canvas = document.getElementById('mainChart');
-    if (!canvas) return;
-
-    crosshairVisible = false;
-    crosshairX = 0;
-    crosshairY = 0;
-    crosshairPrice = null;
-
-    canvas.addEventListener('mousemove', function(event) {
-        if (tooltipLocked) return;
-        if (!crosshairEnabled || !currentChart) return;
-        
-        const rect = canvas.getBoundingClientRect();
-        crosshairX = event.clientX - rect.left;
-        crosshairY = event.clientY - rect.top;
-        crosshairVisible = true;
-        
-        const chartArea = currentChart.chartArea;
-        const yScale = currentChart.scales.y;
-        
-        if (yScale && chartArea) {
-            const pixelRange = chartArea.bottom - chartArea.top;
-            const valueRange = yScale.max - yScale.min;
-            const value = yScale.max - ((crosshairY - chartArea.top) / pixelRange) * valueRange;
-            crosshairPrice = value;
-            
-            updateCurrentPrice(value);
-            
-            const xScale = currentChart.scales.x;
-            const timeValue = xScale.getValueForPixel(crosshairX);
-            const timeText = timeValue ? new Date(timeValue).toLocaleTimeString() : '';
-            updateAxisIndicators(crosshairX, crosshairY, value, timeText);
-        }
-        
-        if (currentChart) currentChart.draw();
-    });
-
-    canvas.addEventListener('mouseleave', function() {
-        crosshairVisible = false;
-        crosshairPrice = null;
-        hideAxisIndicators();
-        if (currentChart) currentChart.draw();
-    });
-
-    if (currentChart) {
-        const originalDraw = currentChart.draw;
-        currentChart.draw = function() {
-            originalDraw.call(this);
-            if (crosshairEnabled) drawCrosshair();
-        };
-    }
-}
-
-function drawCrosshair() {
-    if (!crosshairEnabled || !crosshairVisible || !currentChart) return;
-
-    const ctx = currentChart.ctx;
-    const chartArea = currentChart.chartArea;
-    
-    if (crosshairX < chartArea.left || crosshairX > chartArea.right || crosshairY < chartArea.top || crosshairY > chartArea.bottom) return;
-
-    ctx.save();
-    ctx.strokeStyle = '#745f3bff';
-    ctx.lineWidth = 1;
-    ctx.setLineDash([5, 5]);
-    
-    ctx.beginPath();
-    ctx.moveTo(crosshairX, chartArea.top);
-    ctx.lineTo(crosshairX, chartArea.bottom);
-    ctx.stroke();
-    
-    ctx.beginPath();
-    ctx.moveTo(chartArea.left, crosshairY);
-    ctx.lineTo(chartArea.right, crosshairY);
-    ctx.stroke();
-    
-    ctx.setLineDash([]);
-    ctx.fillStyle = '#F59E0B';
-    ctx.beginPath();
-    ctx.arc(crosshairX, crosshairY, 4, 0, 2 * Math.PI);
-    ctx.fill();
-    ctx.restore();
-}
-
-function getEnhancedChartOptions(timeframe, theme) {
-    return {
-        responsive: true, 
-        maintainAspectRatio: false,
-        interaction: { 
-            mode: 'nearest', 
-            intersect: false, 
-            axis: 'xy' 
-        },
-        plugins: {
-            legend: {
-                display: false
-            },
-            tooltip: {
-                mode: 'nearest',
-                intersect: false,
-                backgroundColor: 'rgba(15, 23, 42, 0.95)',
-                titleColor: theme.text,
-                bodyColor: theme.textSecondary,
-                borderColor: theme.grid,
-                borderWidth: 1,
-                cornerRadius: 6,
-                padding: 12,
-                callbacks: {
-                    title: function(context) {
-                        const date = new Date(context[0].parsed.x);
-                        return date.toLocaleDateString('en-US', {
-                            weekday: 'short',
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                            hour12: false
-                        });
-                    },
-                    label: function(context) {
-                        let label = context.dataset.label || '';
-                        if (label) label += ': ';
-                        if (context.parsed.y !== null) {
-                            label += new Intl.NumberFormat('en-US', { 
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 5 
-                            }).format(context.parsed.y);
-                        }
-                        return label;
-                    }
-                }
-            },
-            zoom: {
-                zoom: {
-                    wheel: { enabled: true, speed: 0.1 },
-                    pinch: { enabled: true },
-                    mode: 'xy',
-                    scaleMode: 'xy'
-                },
-                pan: {
-                    enabled: true,
-                    mode: 'xy'
-                }
-            }
-        },
-        scales: {
-            x: {
-                type: 'time',
-                time: {
-                    unit: getProfessionalTimeUnit(timeframe),
-                    displayFormats: getProfessionalTimeFormats(timeframe)
-                },
-                grid: { 
-                    color: theme.grid,
-                    drawBorder: false
-                },
-                ticks: { 
-                    color: theme.textSecondary,
-                    maxRotation: 0,
-                    autoSkip: true,
-                    maxTicksLimit: 8
-                },
-                border: { display: false }
-            },
-            y: {
-                position: 'right',
-                grid: { 
-                    color: theme.grid,
-                    drawBorder: false
-                },
-                ticks: { 
-                    color: theme.textSecondary,
-                    callback: (value) => value.toFixed(5),
-                    maxTicksLimit: 6
-                },
-                border: { display: false }
-            },
-            y2: {
-                type: 'linear',
-                position: 'left',
-                grid: { drawOnChartArea: false },
-                ticks: { 
-                    color: '#F59E0B',
-                    callback: (value) => value.toFixed(2),
-                    maxTicksLimit: 5
-                },
-                border: { display: false },
-                min: 0,
-                max: 100
-            }
-        }
-    };
-}
-
-function setChartType(type) {
-    currentChartType = type;
-    
-    const chartTypeSelect = document.getElementById('chartTypeSelect');
-    if (chartTypeSelect) {
-        chartTypeSelect.value = type;
-    }
-    
-    if (currentTimeframe) {
-        loadChart(currentTimeframe);
-    }
-}
-
-function updateChartTimeframe() {
-    const timeframe = document.getElementById('timeframeSelect').value;
-    loadChart(timeframe);
-}
-
-function toggleIndicatorsPanel() {
-    const panel = document.getElementById('indicatorsPanel');
-    const toggleBtn = document.querySelector('.panel-toggle');
-    
-    if (panel.classList.contains('collapsed')) {
-        panel.classList.remove('collapsed');
-        if (toggleBtn) toggleBtn.innerHTML = '◀';
-    } else {
-        panel.classList.add('collapsed');
-        if (toggleBtn) toggleBtn.innerHTML = '▶';
-    }
-}
-
-function initializeIndicatorsPanel() {
-    renderIndicatorsList();
-}
-
-function downloadChart() {
-    if (!currentChart) return;
-    
-    const canvas = document.getElementById('mainChart');
-    const link = document.createElement('a');
-    link.download = `chart-${currentPair}-${currentTimeframe}-${new Date().toISOString().split('T')[0]}.png`;
-    link.href = canvas.toDataURL('image/png');
-    link.click();
-}
-
-function zoomIn() {
-    if (currentChart) {
-        currentChart.zoom(1.2);
-    }
-}
-
-function zoomOut() {
-    if (currentChart) {
-        currentChart.zoom(0.8);
-    }
-}
-
-function resetZoom() {
-    if (currentChart) {
-        currentChart.resetZoom();
-    }
-}
-
+// Keyboard shortcuts
 function handleKeyboardShortcuts(e) {
     if (e.ctrlKey || e.metaKey) {
         switch(e.key) {
@@ -1285,333 +1632,9 @@ function handleKeyboardShortcuts(e) {
     }
 }
 
-// ==================== PYRAMID FUNCTIONS ====================
-const status = document.getElementById('status');
-const updateInfo = document.getElementById('updateInfo');
-const pyramidDiv = document.getElementById('pyramid');
-const expandedBlocks = new Set();
+// ==================== EXPORT & STARTUP ====================
 
-function setPyramidSize(size) {
-    document.querySelectorAll('.size-btn').forEach(btn => btn.classList.remove('active'));
-    event.target.classList.add('active');
-    pyramidDiv.className = 'pyramid ' + size;
-}
-
-function getBlockId(block) { return `${block.tf}_${block.time}`; }
-
-function shouldDisplayBlock(block) {
-    if (!timeframeVisibility[block.tf]) return false;
-    if (block.children && block.children.length > 0) {
-        return block.children.some(child => shouldDisplayBlock(child));
-    }
-    return true;
-}
-
-// UPDATED: Calculate pips with crypto detection
-function calculatePips(block) {
-    if (!block.H || !block.L) return 0;
-    
-    const high = parseFloat(block.H);
-    const low = parseFloat(block.L);
-    const range = high - low;
-    
-    // Detect pair type and apply correct calculation
-    if (currentPair.includes('JPY')) {
-        // JPY pairs: 2-3 decimal places, pip = 0.01
-        return Math.round(range * 100) + "pips";                    // ← ADD "pips"
-    } else if (currentPair.includes('BTC') || currentPair.includes('ETH') || currentPair.includes('XRP') || 
-               currentPair.includes('ADA') || currentPair.includes('DOT') || currentPair.includes('LTC')) {
-        // Crypto pairs: use points (raw price difference)
-        return Math.round(range) + "points";                       // ← REMOVE *100, CHANGE TO "points"
-    } else {
-        // Most forex pairs: 4-5 decimal places, pip = 0.0001
-        return Math.round(range * 10000) + "pips";                 // ← ADD "pips"
-    }
-}
-
-// UPDATED: Calculate completion progress with fixed expected totals and color coding
-function calculateProgress(block) {
-    if (!block.children || block.children.length === 0) {
-        return { hasProgress: false };
-    }
-    
-    // Get expected total for this timeframe
-    const expectedTotal = expectedChildCounts[block.tf] || block.children.length;
-    
-    // FIXED: Count completed children (ALL blocks with momentum, including neutral)
-    const completed = block.children.filter(child => 
-        child.momentum_summary  // ← Only check for momentum data, include neutral blocks
-    ).length;
-    
-    // Determine status for color coding
-    let status = '';
-    if (completed === expectedTotal) {
-        status = 'complete'; // Green - fully complete
-    } else if (completed > 0) {
-        status = 'partial';  // Blue - partially complete
-    }
-    // No status if completed === 0
-    
-    return {
-        hasProgress: expectedTotal > 0,
-        completed: completed,
-        total: expectedTotal, // Use fixed expected total, not visible count
-        status: status
-    };
-}
-
-// UPDATED: Create block with corrected pips, progress, and color coding
-function createBlock(block, level = 0) {
-    if (!shouldDisplayBlock(block)) return null;
-
-    const blockId = getBlockId(block);
-    const div = document.createElement('div');
-    div.className = `block ${block.dir === '🟢' ? 'green' : block.dir === '🔴' ? 'red' : 'gray'}`;
-    div.dataset.id = blockId;
-
-    const isExpanded = expandedBlocks.has(blockId);
-    const hasChildren = block.children && block.children.some(child => shouldDisplayBlock(child));
-    
-    // UPDATED: Calculate pips and progress with corrected logic
-    const pips = calculatePips(block);
-    const progressInfo = calculateProgress(block);
-
-    // UPDATED: Include corrected pips and progress with color coding
-    div.innerHTML = `
-        <div class="header-line">
-            <span class="toggle" onclick="toggleBlock('${blockId}', this)">
-                ${hasChildren ? (isExpanded ? '📂' : '📁') : '📄'} 
-                ${block.tf} ${block.range} ${block.dir}
-            </span>
-            <span class="block-metrics">
-                <span class="pips-value">${pips}</span>
-                ${progressInfo.hasProgress ? `
-                    <span class="progress-indicator ${progressInfo.status}">
-                        ${progressInfo.completed}/${progressInfo.total}
-                    </span>
-                ` : ''}
-            </span>
-            <span class="ohlc">O:${block.O} H:${block.H} L:${block.L} C:${block.C} V:${formatVolume(block.volume)}</span>
-        </div>
-        <div class="momentum-summary">${block.momentum_summary}</div>
-    `;
-
-    if (hasChildren) {
-        const children = document.createElement('div');
-        children.className = `children ${isExpanded ? '' : 'hidden'}`;
-        children.id = `children-${blockId}`;
-        
-        block.children.forEach(child => {
-            const childElement = createBlock(child, level + 1);
-            if (childElement) children.appendChild(childElement);
-        });
-        
-        if (children.children.length > 0) div.appendChild(children);
-    }
-    
-    div.addEventListener('click', function(e) {
-        e.stopPropagation();
-        
-        if (!e.target.classList.contains('toggle')) {
-            lastClickedPyramidBlock = block;
-            switchToChartWithTimeframe(block);
-        }
-    });
-    
-    return div;
-}
-
-window.toggleBlock = function(blockId, element) {
-    const children = document.getElementById(`children-${blockId}`);
-    if (!children) return;
-
-    const willExpand = children.classList.contains('hidden');
-    children.classList.toggle('hidden');
-
-    const icon = element.querySelector('span') || element;
-    icon.innerHTML = willExpand ? icon.innerHTML.replace('📁', '📂') : icon.innerHTML.replace('📂', '📁');
-    
-    if (willExpand) expandedBlocks.add(blockId);
-    else expandedBlocks.delete(blockId);
-};
-
-function switchToChartWithTimeframe(block) {
-    switchTab('chart');
-    
-    setTimeout(() => {
-        const timeframeSelect = document.getElementById('timeframeSelect');
-        if (timeframeSelect) {
-            timeframeSelect.value = block.tf;
-            loadChart(block.tf);
-        }
-    }, 150);
-}
-
-// UPDATED: Render function with better loading states
-function render(data) {
-    const scrollPos = window.scrollY;
-    pyramidDiv.innerHTML = '';
-    
-    if (!data || !data.blocks) {
-        pyramidDiv.innerHTML = '<div class="loading">📊 Loading pyramid data...</div>';
-        return;
-    }
-
-    if (status) status.textContent = `${currentPair} • ${pyramidStyleNames[currentPyramidStyle]}`;
-    if (updateInfo) updateInfo.textContent = `Last Updated: ${new Date().toLocaleString()}`;
-    
-    let visibleBlocksCount = 0;
-    data.blocks.forEach(block => {
-        const blockElement = createBlock(block);
-        if (blockElement) {
-            pyramidDiv.appendChild(blockElement);
-            visibleBlocksCount++;
-        }
-    });
-
-    if (visibleBlocksCount === 0) {
-        pyramidDiv.innerHTML = '<div class="loading">📊 Loading market data...</div>';
-    } else {
-        // Show live icon when data is successfully loaded
-        showLiveIcon();
-    }
-
-    window.scrollTo(0, scrollPos);
-}
-
-// UPDATED: Better error handling in updateDashboard
-function updateDashboard() {
-    fetch(`/api/pyramid?pair=${currentPair}&pyramid_style=${currentPyramidStyle}`)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
-            }
-            return response.json();
-        })
-        .then(render)
-        .catch(error => {
-            console.error('Dashboard update error:', error);
-            if (status) status.textContent = '🔄 Updating market data...';
-            if (updateInfo) updateInfo.textContent = 'Connecting to data source...';
-            
-            // Keep existing blocks visible during errors
-            if (pyramidDiv.children.length === 0) {
-                pyramidDiv.innerHTML = '<div class="loading">📊 Connecting to market data...</div>';
-            }
-        })
-        .finally(() => {
-            // Always hide reloading sign after attempt
-            hideReloadingSign();
-        });
-}
-
-function changePyramidStyle(style) {
-    currentPyramidStyle = style;
-    
-    const selectedStructure = pyramidStructures[style];
-    Object.keys(timeframeVisibility).forEach(tf => {
-        timeframeVisibility[tf] = selectedStructure.includes(tf);
-    });
-    
-    const dropdown = document.getElementById('pyramidStyleSelect');
-    if (dropdown) dropdown.value = style;
-    
-    updateBackendSettings();
-    updateDashboard();
-}
-
-function updateBackendSettings() {
-    const settings = {
-        symbol: currentPair.replace('/', ''),
-        pyramid_style: currentPyramidStyle
-    };
-    
-    fetch('/api/update-settings', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(settings)
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
-            console.log('✅ Backend settings updated:', data.message);
-        } else {
-            console.error('❌ Backend settings update failed:', data.error);
-        }
-    })
-    .catch(error => {
-        console.error('❌ Backend settings sync error:', error);
-    });
-}
-
-// UPDATED: changePair with better loading states
-function changePair(pair) {
-    currentPair = pair;
-    const pairsSelect = document.getElementById('pairsSelect');
-    if (pairsSelect) pairsSelect.value = pair;
-    
-    updateBackendSettings();
-    updateDashboard();
-    
-    if (currentTimeframe) {
-        loadChart(currentTimeframe);
-    }
-}
-
-function switchTab(tabName) {
-    document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
-    document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
-    
-    const targetTab = document.getElementById(tabName + '-tab');
-    if (targetTab) targetTab.classList.add('active');
-    
-    event.target.classList.add('active');
-    
-    if (tabName === 'chart') {
-        setTimeout(() => {
-            if (!currentChart) {
-                loadChart(currentTimeframe);
-            }
-        }, 100);
-    }
-}
-
-function updateCurrentPrice(price) {
-    const currentPriceElement = document.getElementById('currentPrice');
-    if (currentPriceElement && price) {
-        currentPriceElement.textContent = typeof price === 'number' ? price.toFixed(5) : price;
-        
-        const lastPrice = parseFloat(currentPriceElement.dataset.lastPrice) || price;
-        if (price > lastPrice) {
-            currentPriceElement.style.color = 'var(--green)';
-            currentPriceElement.style.borderColor = 'var(--green-border)';
-        } else if (price < lastPrice) {
-            currentPriceElement.style.color = 'var(--red)';
-            currentPriceElement.style.borderColor = 'var(--red-border)';
-        }
-        currentPriceElement.dataset.lastPrice = price;
-    }
-}
-
-function getProfessionalTimeUnit(timeframe) {
-    const units = {
-        'M1': 'minute', 'M5': 'minute', 'M15': 'minute',
-        'H1': 'hour', 'H4': 'hour', 'D1': 'day'
-    };
-    return units[timeframe] || 'hour';
-}
-
-function getProfessionalTimeFormats(timeframe) {
-    return {
-        minute: 'HH:mm',
-        hour: 'MMM dd HH:mm',
-        day: 'MMM dd, yyyy'
-    };
-}
-
-// ==================== EXPORT FUNCTIONS FOR GLOBAL ACCESS ====================
+// Export functions for global access
 window.MegaFlowzDashboard = {
     initializeDashboard,
     loadChart,
@@ -1627,11 +1650,21 @@ window.MegaFlowzDashboard = {
     onUserAction
 };
 
-// Start the dashboard when DOM is loaded
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializeDashboard);
-} else {
-    initializeDashboard();
-}
+// Global functions needed for HTML event handlers
+window.toggleBlock = toggleBlock;
+window.toggleIndicatorSettings = toggleIndicatorSettings;
+window.updateIndicatorSetting = updateIndicatorSetting;
+window.removeIndicator = removeIndicator;
+window.setPyramidSize = setPyramidSize;
+window.switchTab = switchTab;
+window.updateChartTimeframe = updateChartTimeframe;
+window.setChartType = setChartType;
+window.toggleIndicatorsPanel = toggleIndicatorsPanel;
+window.toggleCrosshair = toggleCrosshair;
+window.downloadChart = downloadChart;
+window.zoomIn = zoomIn;
+window.zoomOut = zoomOut;
+window.resetZoom = resetZoom;
+window.addIndicatorFromDropdown = addIndicatorFromDropdown;
 
 console.log("🚀 MEGA FLOWZ Dashboard Script Loaded Successfully!");

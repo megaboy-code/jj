@@ -630,15 +630,16 @@ body {
 .chart-wrapper {
   flex: 1;
   position: relative;
-  background: var(--card);
+  background: var(--card) !important;
   border-radius: 10px;
   border: 1px solid var(--border);
-  overflow: hidden;
+  overflow: hidden !important;
 }
 #mainChart {
   width: 100%;
   height: 100%;
   z-index: 1;
+  background: transparent !important;
 }
 .axis-indicator {
   position: absolute;

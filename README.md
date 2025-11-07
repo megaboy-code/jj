@@ -725,11 +725,13 @@ function renderProfessionalChart(chartData, timeframe, symbol, indicators, indic
     });
 
     initializeAxisIndicators();
+    initializeCurrentPriceLine();
     addCrosshairListeners();
     renderIndicatorsList();
     
     const latestPrice = chartData.length > 0 ? chartData[chartData.length - 1].y : 0;
     updateCurrentPrice(latestPrice);
+    updateCurrentPriceLine(latestPrice, 'neutral');
     
     console.log(`✅ Chart rendered: ${symbol} ${timeframe} (${currentChartType})`);
 }
@@ -798,6 +800,7 @@ function buildIndicatorParameters() {
 
 // Chart dataset creators
 function createCandlestickDataset(priceData, symbol, theme) {
+    // EXPECT OHLC data from backend: {x: timestamp, o: open, h: high, l: low, c: close}
     return [{
         label: `${symbol} Price`,
         data: priceData,
@@ -986,7 +989,7 @@ function getEnhancedChartOptions(timeframe, theme) {
                 ticks: { 
                     color: theme.textSecondary,
                     callback: (value) => value.toFixed(5),
-                    maxTicksLimit: 6
+                    maxTicksLimit: 10  // More ticks for better grid
                 },
                 border: { display: false }
             },
@@ -995,7 +998,7 @@ function getEnhancedChartOptions(timeframe, theme) {
                 position: 'left',
                 grid: { drawOnChartArea: false },
                 ticks: { 
-                    color: '#F59E0B',
+                    color: '#E2E8F0', // Changed from orange to match crosshair
                     callback: (value) => value.toFixed(2),
                     maxTicksLimit: 5
                 },
@@ -1007,7 +1010,46 @@ function getEnhancedChartOptions(timeframe, theme) {
     };
 }
 
-// Crosshair and interaction
+// Current Price Line System
+function initializeCurrentPriceLine() {
+    const chartWrapper = document.querySelector('.chart-wrapper');
+    if (!chartWrapper) return;
+    
+    // Remove existing current price line if any
+    const existingLine = document.getElementById('currentPriceLine');
+    if (existingLine) existingLine.remove();
+    
+    // Create current price line element
+    const currentPriceLine = document.createElement('div');
+    currentPriceLine.id = 'currentPriceLine';
+    currentPriceLine.className = 'current-price-line';
+    currentPriceLine.style.display = 'none';
+    
+    chartWrapper.appendChild(currentPriceLine);
+}
+
+function updateCurrentPriceLine(price, direction) {
+    const currentPriceLine = document.getElementById('currentPriceLine');
+    if (!currentPriceLine || !currentChart) return;
+    
+    const chartArea = currentChart.chartArea;
+    if (!chartArea) return;
+    
+    const yScale = currentChart.scales.y;
+    const pixel = yScale.getPixelForValue(price);
+    
+    if (pixel >= chartArea.top && pixel <= chartArea.bottom) {
+        currentPriceLine.style.display = 'block';
+        currentPriceLine.style.top = `${pixel}px`;
+        currentPriceLine.style.left = `${chartArea.left}px`;
+        currentPriceLine.style.width = `${chartArea.right - chartArea.left}px`;
+        currentPriceLine.style.backgroundColor = direction === 'up' ? 'var(--green)' : 'var(--red)';
+    } else {
+        currentPriceLine.style.display = 'none';
+    }
+}
+
+// Enhanced Crosshair System
 function initializeAxisIndicators() {
     if (axisIndicators.yIndicator) axisIndicators.yIndicator.remove();
     if (axisIndicators.xIndicator) axisIndicators.xIndicator.remove();
@@ -1015,11 +1057,13 @@ function initializeAxisIndicators() {
     const chartWrapper = document.querySelector('.chart-wrapper');
     if (!chartWrapper) return;
     
+    // Y-axis price indicator
     const yIndicator = document.createElement('div');
     yIndicator.className = 'axis-indicator y-axis-indicator';
     yIndicator.id = 'yAxisIndicator';
     yIndicator.style.display = 'none';
     
+    // X-axis time indicator
     const xIndicator = document.createElement('div');
     xIndicator.className = 'axis-indicator x-axis-indicator';
     xIndicator.id = 'xAxisIndicator';
@@ -1038,19 +1082,25 @@ function updateAxisIndicators(x, y, price, time) {
     const chartArea = currentChart?.chartArea;
     if (!chartArea) return;
     
+    // Update Y-axis price indicator
     if (price !== null && y >= chartArea.top && y <= chartArea.bottom) {
         axisIndicators.yIndicator.textContent = price.toFixed(5);
         axisIndicators.yIndicator.style.top = `${y}px`;
         axisIndicators.yIndicator.style.right = '0px';
         axisIndicators.yIndicator.style.display = 'block';
-    } else axisIndicators.yIndicator.style.display = 'none';
+    } else {
+        axisIndicators.yIndicator.style.display = 'none';
+    }
     
+    // Update X-axis time indicator
     if (time && x >= chartArea.left && x <= chartArea.right) {
         axisIndicators.xIndicator.textContent = time;
         axisIndicators.xIndicator.style.left = `${x}px`;
         axisIndicators.xIndicator.style.bottom = '0px';
         axisIndicators.xIndicator.style.display = 'block';
-    } else axisIndicators.xIndicator.style.display = 'none';
+    } else {
+        axisIndicators.xIndicator.style.display = 'none';
+    }
 }
 
 function hideAxisIndicators() {
@@ -1089,7 +1139,14 @@ function addCrosshairListeners() {
             
             const xScale = currentChart.scales.x;
             const timeValue = xScale.getValueForPixel(crosshairX);
-            const timeText = timeValue ? new Date(timeValue).toLocaleTimeString() : '';
+            const timeText = timeValue ? new Date(timeValue).toLocaleString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+            }) : '';
+            
             updateAxisIndicators(crosshairX, crosshairY, value, timeText);
         }
         
@@ -1121,25 +1178,24 @@ function drawCrosshair() {
     if (crosshairX < chartArea.left || crosshairX > chartArea.right || crosshairY < chartArea.top || crosshairY > chartArea.bottom) return;
 
     ctx.save();
-    ctx.strokeStyle = '#F59E0B';
+    // Changed from orange to standard crosshair color (light gray)
+    ctx.strokeStyle = '#E2E8F0';
     ctx.lineWidth = 1;
     ctx.setLineDash([5, 5]);
     
+    // Vertical line only
     ctx.beginPath();
     ctx.moveTo(crosshairX, chartArea.top);
     ctx.lineTo(crosshairX, chartArea.bottom);
     ctx.stroke();
     
+    // Horizontal line only  
     ctx.beginPath();
     ctx.moveTo(chartArea.left, crosshairY);
     ctx.lineTo(chartArea.right, crosshairY);
     ctx.stroke();
     
-    ctx.setLineDash([]);
-    ctx.fillStyle = '#F59E0B';
-    ctx.beginPath();
-    ctx.arc(crosshairX, crosshairY, 4, 0, 2 * Math.PI);
-    ctx.fill();
+    // REMOVED THE DOT COMPLETELY - clean professional look
     ctx.restore();
 }
 
@@ -1246,7 +1302,6 @@ function getProfessionalTimeFormats(timeframe) {
         day: 'MMM dd, yyyy'
     };
 }
-
 // ==================== INDICATORS MANAGEMENT ====================
 
 function initializeIndicatorsPanel() {
@@ -1668,9 +1723,3 @@ window.resetZoom = resetZoom;
 window.addIndicatorFromDropdown = addIndicatorFromDropdown;
 
 console.log("🚀 MEGA FLOWZ Dashboard Script Loaded Successfully!");
-
-
-
-
-
-

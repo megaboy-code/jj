@@ -1,1852 +1,1312 @@
-// ===============================================================
-// ⚡ MEGA FLOWZ DASHBOARD - REORGANIZED SCRIPT
-// ===============================================================
-// ==================== GLOBAL STATE & CONFIG ====================
-// Global state
-let currentChart = null;
-let currentChartType = 'line';
-let currentTimeframe = 'H1';
-let currentPyramidStyle = 'daily';
-let currentPair = 'EUR/USD';
-let activeIndicators = new Map();
-let crosshairEnabled = true;
-let isZoomModeActive = false;
-let currentZoomMode = null;
-// Smart Polling System State
-let isActivePollingMode = false;
-let activePollingTimer = null;
-let pollingInterval = null;
-const ACTIVE_POLL_INTERVAL = 2000; // 2 seconds during active mode
-const NORMAL_POLL_INTERVAL = 30000; // 30 seconds during normal mode
-const ACTIVE_POLL_DURATION = 10000; // 10 seconds active window
-let activePollCount = 0;
-const MAX_ACTIVE_POLLS = 5; // Maximum 5 polls during active mode
-// Loading states
-let isLoadingNewPair = false;
-let currentLiveIcon = null;
-let lastDataUpdateTime = null;
-let isBackendOnline = true;
-// Chart colors
-let chartColors = {
-    line: '#3A86FF',
-    areaFill: 'rgba(58, 134, 255, 0.15)',
-    bull: '#00D394',
-    bear: '#EF4444'
-};
-// Real-time axis indicators
-let axisIndicators = {
-    yIndicator: null,
-    xIndicator: null
-};
-// Crosshair state
-let crosshairVisible = false;
-let crosshairX = 0;
-let crosshairY = 0;
-let crosshairPrice = null;
-// Tooltip locking variables
-let tooltipLocked = false;
-let lockedTooltipPosition = null;
-// Track pyramid block for tooltip positioning
-let lastClickedPyramidBlock = null;
-// Pyramid style configurations
-const pyramidStructures = {
-    'scalper': ['M15', 'M5', 'M1'],
-    'intraday': ['H1', 'M15', 'M5', 'M1'],
-    'swing': ['H4', 'H1', 'M15', 'M5', 'M1'],
-    'daily': ['D1', 'H4', 'H1', 'M15', 'M5', 'M1']
-};
-const pyramidStyleNames = {
-    'scalper': '⚡ Scalper',
-    'intraday': '📈 Intraday',
-    'swing': '🔄 Swing',
-    'daily': '📅 Daily'
-};
-let timeframeVisibility = {
-    'D1': true, 'H4': true, 'H1': true,
-    'M15': true, 'M5': true, 'M1': true
-};
-// Expected child counts for progress calculation
-const expectedChildCounts = {
-    'D1': 6, // 6 H4 blocks in a day
-    'H4': 4, // 4 H1 blocks in 4 hours
-    'H1': 4, // 4 M15 blocks in 1 hour
-    'M15': 3, // 3 M5 blocks in 15 minutes
-    'M5': 5 // 5 M1 blocks in 5 minutes
-};
-// Indicator management
-let indicatorInstances = {
-    sma: [], ema: [], rsi: [], macd: [], bollinger: [], stochastic: [], supportresistance: []
-};
-// Track real indicator values from backend
-let currentIndicatorValues = {};
-// DOM elements
-const status = document.getElementById('status');
-const updateInfo = document.getElementById('updateInfo');
-const pyramidDiv = document.getElementById('pyramid');
-const expandedBlocks = new Set();
-// ==================== INITIALIZATION ====================
-function initializeDashboard() {
-    console.log("🧠 Initializing MEGA FLOWZ Professional Dashboard...");
-   
-    // Set defaults
-    const pairsSelect = document.getElementById('pairsSelect');
-    if (pairsSelect) pairsSelect.value = 'EUR/USD';
-   
-    // UPDATE: Add candlestick option to dropdown
-    const chartTypeSelect = document.getElementById('chartTypeSelect');
-    if (chartTypeSelect) {
-        chartTypeSelect.innerHTML = `
-            <option value="line">📈 Line</option>
-            <option value="area">🟦 Area</option>
-            <option value="candlestick">🕯️ Candlestick</option>
-            <option value="trend">🎯 Bull/Bear Trend</option>
-        `;
-        chartTypeSelect.value = 'line';
-    }
-   
-    // Initialize smart polling system
-    initializeSmartPolling();
-   
-    // Initialize components
-    initializeIndicatorsPanel();
-    initializeColorPickers();
-   
-    // Start backend status monitoring
-    setInterval(checkBackendStatus, 5000);
-   
-    // Load initial data
-    changePyramidStyle('daily');
-    updateDashboard();
-   
-    // Keyboard shortcuts
-    document.addEventListener('keydown', handleKeyboardShortcuts);
-    console.log("✅ Dashboard initialized successfully");
+/* ===============================================================
+   🏔️📈 PYRAMID & CHART STYLES - MEGA FLOWZ DASHBOARD
+   =============================================================== */
+:root {
+  --bg: #0a0e14;
+  --card: #151a21;
+  --text: #e6e6e6;
+  --green: #00d394;
+  --red: #ff4d4d;
+  --gray: #8a8f98;
+  --accent: #3a86ff;
+  --tab-bg: #11161d;
+  --tab-active: #3a86ff;
+  --green-border: #00d394;
+  --red-border: #ff4d4d;
+  --gray-border: #8a8f98;
+  --grid: #1e232a;
+  --border: #2a2f36;
+  --success-bg: rgba(0, 211, 148, 0.1);
+  --danger-bg: rgba(255, 77, 77, 0.1);
+  --accent-bg: rgba(58, 134, 255, 0.1);
+  --axis-border: #2a2f36;
 }
-function checkBackendStatus() {
-    if (!lastDataUpdateTime) return;
-   
-    const timeSinceLastUpdate = Date.now() - lastDataUpdateTime;
-    const isOffline = timeSinceLastUpdate > 35000; // 35 seconds without data
-   
-    if (isOffline && isBackendOnline && currentLiveIcon) {
-        console.log("🔴 Backend appears offline");
-        isBackendOnline = false;
-        currentLiveIcon.style.color = '#EF4444'; // Red for offline
-        currentLiveIcon.classList.remove('pulsing');
-        currentLiveIcon.classList.add('offline');
-    }
+
+* {
+  box-sizing: border-box;
 }
-// Start the dashboard when DOM is loaded
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializeDashboard);
-} else {
-    initializeDashboard();
+
+body {
+  margin: 0;
+  font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
 }
-console.log("🚀 MEGA FLOWZ Dashboard Script Loaded Successfully!");
-// ==================== SMART POLLING SYSTEM ====================
-function initializeSmartPolling() {
-    console.log("🔄 Initializing Smart Polling System...");
-    startPolling();
-    setupUserActivityListeners();
+
+/* ==================== TAB SYSTEM ==================== */
+.tabs-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
 }
-function onUserAction(actionType = 'unknown') {
-    console.log(`🎯 User action detected: ${actionType}`);
-   
-    // Only trigger active polling for pair and style changes
-    if (actionType !== 'pair_change' && actionType !== 'pyramid_style_change') {
-        console.log(`🔕 Skipping active polling for: ${actionType}`);
-        return;
-    }
-   
-    // Set active polling state
-    isActivePollingMode = true;
-    activePollCount = 0;
-   
-    // Clear existing timers
-    if (activePollingTimer) {
-        clearTimeout(activePollingTimer);
-    }
-   
-    // Set timer to return to normal mode
-    activePollingTimer = setTimeout(() => {
-        console.log("🔄 Returning to normal polling mode (30s)");
-        isActivePollingMode = false;
-        activePollCount = 0;
-        restartPolling();
-    }, ACTIVE_POLL_DURATION);
-   
-    // Immediate data refresh
-    updateDashboard();
-   
-    // Restart polling with active interval
-    restartPolling();
+
+.tabs-header {
+  display: flex;
+  background: var(--tab-bg);
+  border-bottom: 1px solid var(--border);
+  padding: 0 16px;
+  flex-wrap: wrap;
+  gap: 4px;
 }
-function startPolling() {
-    // Clear existing interval
-    if (pollingInterval) {
-        clearInterval(pollingInterval);
-    }
-   
-    // Start new interval based on current mode
-    const interval = isActivePollingMode ? ACTIVE_POLL_INTERVAL : NORMAL_POLL_INTERVAL;
-    console.log(`📡 Starting ${isActivePollingMode ? 'ACTIVE' : 'NORMAL'} mode polling: ${interval/1000}s interval`);
-   
-    pollingInterval = setInterval(() => {
-        if (isActivePollingMode) {
-            activePollCount++;
-            console.log(`🔍 Active poll #${activePollCount}`);
-           
-            // Stop active polling after max polls reached
-            if (activePollCount >= MAX_ACTIVE_POLLS) {
-                console.log("🔄 Max active polls reached, returning to normal mode");
-                isActivePollingMode = false;
-                activePollCount = 0;
-                restartPolling();
-                return;
-            }
-        }
-        updateDashboard();
-    }, interval);
+
+.tab {
+  padding: 12px 20px;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  color: var(--gray);
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-bottom: 3px solid transparent;
+  position: relative;
+  white-space: nowrap;
 }
-function restartPolling() {
-    console.log(`🔄 Restarting polling in ${isActivePollingMode ? 'ACTIVE' : 'NORMAL'} mode`);
-    startPolling();
+
+.tab:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.03);
 }
-function setupUserActivityListeners() {
-    // Pair dropdown change - KEEP THIS
-    const pairsSelect = document.getElementById('pairsSelect');
-    if (pairsSelect) {
-        pairsSelect.addEventListener('change', (e) => {
-            showReloadingSign();
-            onUserAction('pair_change');
-            changePair(e.target.value);
-        });
-    }
-   
-    // Pyramid style dropdown change - KEEP THIS
-    const pyramidStyleSelect = document.getElementById('pyramidStyleSelect');
-    if (pyramidStyleSelect) {
-        pyramidStyleSelect.addEventListener('change', (e) => {
-            showReloadingSign();
-            onUserAction('pyramid_style_change');
-            changePyramidStyle(e.target.value);
-        });
-    }
-   
-    // REMOVED: Chart interactions - no longer trigger active polling
-    const chartCanvas = document.getElementById('mainChart');
-    if (chartCanvas) {
-        // Keep functionality but don't trigger active polling
-        chartCanvas.addEventListener('click', () => {
-            // Chart click functionality without active polling
-        });
-        chartCanvas.addEventListener('mousemove', () => {
-            // Chart hover functionality without active polling
-        });
-    }
-   
-    // REMOVED: Indicator interactions - no longer trigger active polling
-    document.addEventListener('click', (e) => {
-        if (e.target.classList.contains('indicator-btn') ||
-            e.target.classList.contains('setting-group') ||
-            e.target.closest('.indicator-settings')) {
-            // Indicator adjustments without active polling
-        }
-    });
-   
-    // REMOVED: Pyramid size buttons - no longer trigger active polling
-    document.addEventListener('click', (e) => {
-        if (e.target.classList.contains('size-btn')) {
-            // Pyramid size changes without active polling
-        }
-    });
-   
-    // REMOVED: Timeframe changes - no longer trigger active polling
-    const timeframeSelect = document.getElementById('timeframeSelect');
-    if (timeframeSelect) {
-        timeframeSelect.addEventListener('change', () => {
-            // Timeframe changes without active polling
-            loadChart(timeframeSelect.value);
-        });
-    }
-   
-    // REMOVED: Chart type changes - no longer trigger active polling
-    const chartTypeSelect = document.getElementById('chartTypeSelect');
-    if (chartTypeSelect) {
-        chartTypeSelect.addEventListener('change', () => {
-            // Chart type changes without active polling
-            setChartType(chartTypeSelect.value);
-        });
-    }
-   
-    console.log("✅ User activity listeners setup complete");
+
+.tab.active {
+  color: var(--text);
+  border-bottom-color: var(--tab-active);
+  background: linear-gradient(135deg, rgba(58, 134, 255, 0.15), rgba(58, 134, 255, 0.05));
 }
-function getPollingStatus() {
-    return {
-        isActivePollingMode: isActivePollingMode,
-        currentInterval: isActivePollingMode ? ACTIVE_POLL_INTERVAL : NORMAL_POLL_INTERVAL,
-        mode: isActivePollingMode ? 'ACTIVE' : 'NORMAL',
-        activePollCount: activePollCount,
-        maxActivePolls: MAX_ACTIVE_POLLS,
-        timeUntilNormal: activePollingTimer ? 'active' : 'normal'
-    };
+
+.tab-content {
+  flex: 1;
+  overflow: auto;
+  padding: 0;
+  display: none;
 }
-// ==================== LOADING STATES MANAGEMENT ====================
-function showReloadingSign() {
-    // Remove existing live icon
-    if (currentLiveIcon) {
-        currentLiveIcon.remove();
-        currentLiveIcon = null;
-    }
-   
-    // Create or update reloading sign
-    let reloadingSign = document.getElementById('reloadingSign');
-    if (!reloadingSign) {
-        reloadingSign = document.createElement('div');
-        reloadingSign.id = 'reloadingSign';
-        reloadingSign.className = 'reloading-sign';
-        reloadingSign.innerHTML = '🔄 Loading...';
-       
-        const header = document.querySelector('.header');
-        if (header) {
-            header.appendChild(reloadingSign);
-        }
-    }
-   
-    reloadingSign.style.display = 'block';
-    isLoadingNewPair = true;
+
+.tab-content.active {
+  display: block;
 }
-function hideReloadingSign() {
-    const reloadingSign = document.getElementById('reloadingSign');
-    if (reloadingSign) {
-        reloadingSign.style.display = 'none';
-    }
-    isLoadingNewPair = false;
+
+/* ==================== HEADER & CONTROLS ==================== */
+.header {
+  text-align: center;
+  margin-bottom: 16px;
+  padding: 20px;
+  background: linear-gradient(135deg, var(--card) 0%, #1a1f26 100%);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  margin: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  position: relative;
+  overflow: hidden;
 }
-function showLiveIcon() {
-    // Hide reloading sign first
-    hideReloadingSign();
-   
-    // Update last data update time
-    lastDataUpdateTime = Date.now();
-    isBackendOnline = true;
-   
-    // Create small live pulsing icon
-    if (!currentLiveIcon) {
-        currentLiveIcon = document.createElement('div');
-        currentLiveIcon.className = 'live-icon';
-        currentLiveIcon.innerHTML = '●';
-        currentLiveIcon.style.fontSize = '12px';
-        currentLiveIcon.style.width = '16px';
-        currentLiveIcon.style.height = '16px';
-        currentLiveIcon.style.display = 'flex';
-        currentLiveIcon.style.alignItems = 'center';
-        currentLiveIcon.style.justifyContent = 'center';
-       
-        const header = document.querySelector('.header');
-        if (header) {
-            header.appendChild(currentLiveIcon);
-        }
-       
-        // Add pulsing animation
-        setTimeout(() => {
-            if (currentLiveIcon) {
-                currentLiveIcon.classList.add('pulsing');
-                currentLiveIcon.style.color = '#00D394'; // Green for online
-            }
-        }, 100);
-    } else {
-        // Update existing icon to online state
-        currentLiveIcon.style.color = '#00D394';
-        currentLiveIcon.classList.add('pulsing');
-        currentLiveIcon.classList.remove('offline');
-    }
+
+.header h1 {
+  margin: 0 0 12px 0;
+  font-size: 2rem;
+  font-weight: 700;
+  background: linear-gradient(45deg, #3a86ff, #00d394);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: -0.025em;
 }
-// ==================== PYRAMID FUNCTIONS ====================
-function setPyramidSize(size) {
-    document.querySelectorAll('.size-btn').forEach(btn => btn.classList.remove('active'));
-    event.target.classList.add('active');
-    pyramidDiv.className = 'pyramid ' + size;
+
+.info {
+  font-size: 0.85rem;
+  color: var(--gray);
+  margin-top: 6px;
 }
-function getBlockId(block) { return `${block.tf}_${block.time}`; }
-function shouldDisplayBlock(block) {
-    if (!timeframeVisibility[block.tf]) return false;
-    if (block.children && block.children.length > 0) {
-        return block.children.some(child => shouldDisplayBlock(child));
-    }
-    return true;
+
+.pyramid-style-selector {
+  margin: 12px 0 6px 0;
 }
-// UPDATED: Calculate pips with crypto detection
-function calculatePips(block) {
-    if (!block.H || !block.L) return 0;
-   
-    const high = parseFloat(block.H);
-    const low = parseFloat(block.L);
-    const range = high - low;
-   
-    // Detect pair type and apply correct pip calculation
-    if (currentPair.includes('JPY')) {
-        // JPY pairs: 2-3 decimal places, pip = 0.01
-        return Math.round(range * 100) + "pips";
-    } else if (currentPair.includes('BTC') || currentPair.includes('ETH') || currentPair.includes('XRP') ||
-               currentPair.includes('ADA') || currentPair.includes('DOT') || currentPair.includes('LTC')) {
-        // Crypto pairs: use points (raw price difference)
-        return Math.round(range) + "points";
-    } else {
-        // Most forex pairs: 4-5 decimal places, pip = 0.0001
-        return Math.round(range * 10000) + "pips";
-    }
+
+.style-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
-// UPDATED: Calculate completion progress with fixed expected totals and color coding
-function calculateProgress(block) {
-    if (!block.children || block.children.length === 0) {
-        return { hasProgress: false };
-    }
-   
-    // Get expected total for this timeframe
-    const expectedTotal = expectedChildCounts[block.tf] || block.children.length;
-   
-    // FIXED: Count completed children (ALL blocks with momentum, including neutral)
-    const completed = block.children.filter(child =>
-        child.momentum_summary // ← Only check for momentum data, include neutral blocks
-    ).length;
-   
-    // Determine status for color coding
-    let status = '';
-    if (completed === expectedTotal) {
-        status = 'complete'; // Green - fully complete
-    } else if (completed > 0) {
-        status = 'partial'; // Blue - partially complete
-    }
-    // No status if completed === 0
-   
-    return {
-        hasProgress: expectedTotal > 0,
-        completed: completed,
-        total: expectedTotal, // Use fixed expected total, not visible count
-        status: status
-    };
+
+.control-label {
+  font-size: 0.85rem;
+  color: var(--gray);
+  font-weight: 500;
 }
-// UPDATED: Create block with corrected pips, progress, and color coding
-function createBlock(block, level = 0) {
-    if (!shouldDisplayBlock(block)) return null;
-    const blockId = getBlockId(block);
-    const div = document.createElement('div');
-    div.className = `block ${block.dir === '🟢' ? 'green' : block.dir === '🔴' ? 'red' : 'gray'}`;
-    div.dataset.id = blockId;
-    const isExpanded = expandedBlocks.has(blockId);
-    const hasChildren = block.children && block.children.some(child => shouldDisplayBlock(child));
-   
-    // UPDATED: Calculate pips and progress with corrected logic
-    const pips = calculatePips(block);
-    const progressInfo = calculateProgress(block);
-    // UPDATED: Include corrected pips and progress with color coding
-    div.innerHTML = `
-        <div class="header-line">
-            <span class="toggle" onclick="toggleBlock('${blockId}', this)">
-                ${hasChildren ? (isExpanded ? '📂' : '📁') : '📄'}
-                ${block.tf} ${block.range} ${block.dir}
-            </span>
-            <span class="block-metrics">
-                <span class="pips-value">${pips}</span>
-                ${progressInfo.hasProgress ? `
-                    <span class="progress-indicator ${progressInfo.status}">
-                        ${progressInfo.completed}/${progressInfo.total}
-                    </span>
-                ` : ''}
-            </span>
-            <span class="ohlc">O:${block.O} H:${block.H} L:${block.L} C:${block.C} V:${formatVolume(block.volume)}</span>
-        </div>
-        <div class="momentum-summary">${block.momentum_summary}</div>
-    `;
-    if (hasChildren) {
-        const children = document.createElement('div');
-        children.className = `children ${isExpanded ? '' : 'hidden'}`;
-        children.id = `children-${blockId}`;
-       
-        block.children.forEach(child => {
-            const childElement = createBlock(child, level + 1);
-            if (childElement) children.appendChild(childElement);
-        });
-       
-        if (children.children.length > 0) div.appendChild(children);
-    }
-   
-    div.addEventListener('click', function(e) {
-        e.stopPropagation();
-       
-        if (!e.target.classList.contains('toggle')) {
-            lastClickedPyramidBlock = block;
-            switchToChartWithTimeframe(block);
-        }
-    });
-   
-    return div;
+
+.style-dropdown {
+  padding: 8px 36px 8px 12px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 180px;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none'%3E%3Cpath d='M3 5L6 8L9 5' stroke='%238a8f98' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 12px;
 }
-window.toggleBlock = function(blockId, element) {
-    const children = document.getElementById(`children-${blockId}`);
-    if (!children) return;
-    const willExpand = children.classList.contains('hidden');
-    children.classList.toggle('hidden');
-    const icon = element.querySelector('span') || element;
-    icon.innerHTML = willExpand ? icon.innerHTML.replace('📁', '📂') : icon.innerHTML.replace('📂', '📁');
-   
-    if (willExpand) expandedBlocks.add(blockId);
-    else expandedBlocks.delete(blockId);
-};
-function switchToChartWithTimeframe(block) {
-    switchTab('chart');
-   
-    setTimeout(() => {
-        const timeframeSelect = document.getElementById('timeframeSelect');
-        if (timeframeSelect) {
-            timeframeSelect.value = block.tf;
-            loadChart(block.tf);
-        }
-    }, 150);
+
+.style-dropdown:hover {
+  border-color: var(--accent);
+  background-color: rgba(58, 134, 255, 0.05);
 }
-// UPDATED: Render function with better loading states
-function render(data) {
-    const scrollPos = window.scrollY;
-    pyramidDiv.innerHTML = '';
-   
-    if (!data || !data.blocks) {
-        pyramidDiv.innerHTML = '<div class="loading">📊 Loading pyramid data...</div>';
-        return;
-    }
-    if (status) status.textContent = `${currentPair} • ${pyramidStyleNames[currentPyramidStyle]}`;
-    if (updateInfo) updateInfo.textContent = `Last Updated: ${new Date().toLocaleString()}`;
-   
-    let visibleBlocksCount = 0;
-    data.blocks.forEach(block => {
-        const blockElement = createBlock(block);
-        if (blockElement) {
-            pyramidDiv.appendChild(blockElement);
-            visibleBlocksCount++;
-        }
-    });
-    if (visibleBlocksCount === 0) {
-        pyramidDiv.innerHTML = '<div class="loading">📊 Loading market data...</div>';
-    } else {
-        // Show live icon when data is successfully loaded
-        showLiveIcon();
-    }
-    window.scrollTo(0, scrollPos);
+
+.controls {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin: 16px;
+  flex-wrap: wrap;
 }
-// UPDATED: Better error handling in updateDashboard
-function updateDashboard() {
-    fetch(`/api/pyramid?pair=${currentPair}&pyramid_style=${currentPyramidStyle}`)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
-            }
-            return response.json();
-        })
-        .then(render)
-        .catch(error => {
-            console.error('Dashboard update error:', error);
-            if (status) status.textContent = '🔄 Updating market data...';
-            if (updateInfo) updateInfo.textContent = 'Connecting to data source...';
-           
-            // Keep existing blocks visible during errors
-            if (pyramidDiv.children.length === 0) {
-                pyramidDiv.innerHTML = '<div class="loading">📊 Connecting to market data...</div>';
-            }
-        })
-        .finally(() => {
-            // Always hide reloading sign after attempt
-            hideReloadingSign();
-        });
+
+.size-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.8rem;
+  border: 1px solid var(--border);
+  font-weight: 500;
 }
-function changePyramidStyle(style) {
-    currentPyramidStyle = style;
-   
-    const selectedStructure = pyramidStructures[style];
-    Object.keys(timeframeVisibility).forEach(tf => {
-        timeframeVisibility[tf] = selectedStructure.includes(tf);
-    });
-   
-    const dropdown = document.getElementById('pyramidStyleSelect');
-    if (dropdown) dropdown.value = style;
-   
-    updateBackendSettings();
-    updateDashboard();
+
+.size-btn:hover {
+  background: var(--accent);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(58, 134, 255, 0.3);
 }
-function updateBackendSettings() {
-    const settings = {
-        symbol: currentPair.replace('/', ''),
-        pyramid_style: currentPyramidStyle
-    };
-   
-    fetch('/api/update-settings', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(settings)
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
-            console.log('✅ Backend settings updated:', data.message);
-        } else {
-            console.error('❌ Backend settings update failed:', data.error);
-        }
-    })
-    .catch(error => {
-        console.error('❌ Backend settings sync error:', error);
-    });
+
+.size-btn.active {
+  background: var(--accent);
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(58, 134, 255, 0.3);
 }
-// UPDATED: changePair with better loading states
-function changePair(pair) {
-    currentPair = pair;
-    const pairsSelect = document.getElementById('pairsSelect');
-    if (pairsSelect) pairsSelect.value = pair;
-   
-    updateBackendSettings();
-    updateDashboard();
-   
-    if (currentTimeframe) {
-        loadChart(currentTimeframe);
-    }
+
+/* ==================== PYRAMID BLOCKS ==================== */
+.pyramid {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 16px;
+  transition: all 0.3s ease;
 }
-function switchTab(tabName) {
-    document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
-    document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
-   
-    const targetTab = document.getElementById(tabName + '-tab');
-    if (targetTab) targetTab.classList.add('active');
-   
-    event.target.classList.add('active');
-   
-    if (tabName === 'chart') {
-        setTimeout(() => {
-            if (!currentChart) {
-                loadChart(currentTimeframe);
-            }
-        }, 100);
-    }
+
+/* Pyramid Size Variants */
+.pyramid.small .block { padding: 8px; margin: 4px 0; border-left-width: 3px; }
+.pyramid.small .header-line { font-size: 0.8rem; margin-bottom: 4px; }
+.pyramid.small .ohlc { font-size: 0.7rem; padding: 3px 6px; }
+.pyramid.small .momentum-summary { font-size: 0.65rem; margin-top: 4px; padding: 4px; }
+.pyramid.small .children { margin-left: 16px; padding-left: 12px; margin-top: 6px; }
+.pyramid.small .toggle { padding: 2px 4px; font-size: 0.7rem; }
+
+.pyramid.medium .block { padding: 14px; margin: 6px 0; border-left-width: 4px; }
+.pyramid.medium .header-line { font-size: 0.85rem; margin-bottom: 6px; }
+.pyramid.medium .ohlc { font-size: 0.75rem; padding: 4px 8px; }
+.pyramid.medium .momentum-summary { font-size: 0.7rem; margin-top: 6px; padding: 6px; }
+.pyramid.medium .children { margin-left: 20px; padding-left: 14px; margin-top: 8px; }
+
+.pyramid.large .block { padding: 18px; margin: 8px 0; border-left-width: 5px; }
+.pyramid.large .header-line { font-size: 0.9rem; margin-bottom: 8px; }
+.pyramid.large .ohlc { font-size: 0.8rem; padding: 6px 10px; }
+.pyramid.large .momentum-summary { font-size: 0.75rem; margin-top: 8px; padding: 8px; }
+.pyramid.large .children { margin-left: 24px; padding-left: 16px; margin-top: 10px; }
+
+/* Block Styles */
+.block {
+  background: linear-gradient(135deg, var(--card) 0%, #1a2436 100%);
+  border-radius: 8px;
+  padding: 14px;
+  margin: 6px 0;
+  border-left: 4px solid #334155;
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  border: 1px solid var(--border);
+  overflow: hidden;
 }
-// ==================== CHART SYSTEM ====================
-// Chart rendering and datasets - FIXED
-function renderProfessionalChart(chartData, timeframe, symbol, indicators, indicators_data) {
-    const ctx = document.getElementById('mainChart').getContext('2d');
+
+.block.green {
+  border-left-color: var(--green-border);
+  background: linear-gradient(135deg, var(--card) 0%, #15201a 100%);
+}
+
+.block.red {
+  border-left-color: var(--red-border);
+  background: linear-gradient(135deg, var(--card) 0%, #201515 100%);
+}
+
+.block.green:hover {
+  box-shadow: 0 6px 20px rgba(0, 211, 148, 0.2);
+  border-color: var(--green-border);
+  transform: translateY(-2px);
+}
+
+.block.red:hover {
+  box-shadow: 0 6px 20px rgba(255, 77, 107, 0.2);
+  border-color: var(--red-border);
+  transform: translateY(-2px);
+}
+
+.header-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 500;
+  font-size: 0.85rem;
+  margin-bottom: 6px;
+}
+
+.ohlc {
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+  font-size: 0.75rem;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  font-weight: 400;
+}
+
+.momentum-summary {
+  font-size: 0.7rem;
+  color: var(--gray);
+  margin-top: 6px;
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+  padding: 6px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  font-weight: 400;
+}
+
+.children {
+  margin-left: 20px;
+  border-left: 2px dashed var(--border);
+  padding-left: 14px;
+  margin-top: 8px;
+}
+
+.toggle {
+  cursor: pointer;
+  user-select: none;
+  padding: 4px 8px;
+  background: rgba(58, 134, 255, 0.1);
+  border-radius: 4px;
+  transition: background 0.2s ease;
+  font-size: 0.75rem;
+  border: 1px solid rgba(58, 134, 255, 0.3);
+  font-weight: 500;
+}
+
+.toggle:hover { 
+  background: rgba(58, 134, 255, 0.2); 
+}
+
+.hidden { 
+  display: none; 
+}
+
+/* ==================== CHART SYSTEM ==================== */
+.chart-container {
+  height: 100%;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  gap: 16px;
+}
+
+.chart-controls {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  padding: 16px;
+  background: var(--card);
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.timeframe-select, .chart-type-select {
+  padding: 8px 32px 8px 12px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.8rem;
+  font-weight: 500;
+  min-width: 80px;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 12 12' fill='none'%3E%3Cpath d='M3 5L6 8L9 5' stroke='%238a8f98' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 10px;
+}
+
+.timeframe-select:hover, .chart-type-select:hover {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+}
+
+.chart-type-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.color-pickers {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.color-picker {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.color-picker label {
+  font-size: 0.75rem;
+  color: var(--gray);
+  white-space: nowrap;
+}
+
+.color-picker input[type="color"] {
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  background: var(--bg);
+  padding: 0;
+}
+
+.control-btn {
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.8rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.control-btn:hover {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+  transform: translateY(-1px);
+}
+
+.control-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+.current-price {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--green);
+  background: var(--success-bg);
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--green-border);
+  white-space: nowrap;
+}
+
+.chart-status {
+  margin-left: auto;
+  color: var(--gray);
+  font-size: 0.85rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.chart-area {
+  display: flex;
+  flex: 1;
+  gap: 10px;
+  min-height: 500px;
+}
+
+/* ==================== INDICATORS PANEL ==================== */
+.indicators-panel {
+  width: 260px;
+  background: var(--card);
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.3s ease;
+  gap: 14px;
+}
+
+.indicators-panel.collapsed {
+  width: 50px;
+  padding: 10px;
+  align-items: center;
+}
+
+.indicators-panel.collapsed > *:not(.panel-header) {
+  display: none;
+}
+
+.indicators-panel.collapsed .panel-header {
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.indicators-panel.collapsed .panel-header h3,
+.indicators-panel.collapsed .panel-toggle {
+  display: none;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.indicators-panel.collapsed .panel-header {
+  justify-content: center;
+}
+
+.panel-emoji {
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  display: none;
+}
+
+.indicators-panel.collapsed .panel-emoji {
+  display: block;
+}
+
+.panel-emoji:hover {
+  background: var(--accent-bg);
+}
+
+.panel-header h3 {
+  margin: 0;
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 600;
+  flex: 1;
+  text-align: center;
+}
+
+.indicators-panel.collapsed .panel-header h3 {
+  display: none;
+}
+
+.panel-toggle {
+  background: none;
+  border: none;
+  color: var(--gray);
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.panel-toggle:hover {
+  background: var(--accent-bg);
+  color: var(--accent);
+}
+
+.indicators-panel.collapsed .panel-toggle {
+  display: none;
+}
+
+.indicators-dropdown-section {
+  margin-bottom: 6px;
+}
+
+.indicators-dropdown {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  border-radius: 6px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 12 12' fill='none'%3E%3Cpath d='M3 5L6 8L9 5' stroke='%238a8f98' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 10px;
+}
+
+.indicators-dropdown:hover {
+  border-color: var(--accent);
+  background-color: rgba(58, 134, 255, 0.05);
+}
+
+.indicators-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+  overflow-y: auto;
+  max-height: 400px;
+}
+
+.no-indicators {
+  text-align: center;
+  color: var(--gray);
+  font-size: 0.8rem;
+  padding: 20px;
+  font-style: italic;
+}
+
+.indicator-item {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  padding: 10px;
+  transition: all 0.2s ease;
+}
+
+.indicator-item.active {
+  background: var(--accent-bg);
+  border-color: var(--accent);
+}
+
+.indicator-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  cursor: pointer;
+}
+
+.indicator-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.indicator-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  color: var(--gray);
+  background: rgba(255, 255, 255, 0.05);
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+}
+
+.indicator-settings {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.setting-group {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.setting-group label {
+  font-size: 0.7rem;
+  color: var(--gray);
+}
+
+.setting-group input {
+  width: 50px;
+  padding: 3px 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  border-radius: 4px;
+  font-size: 0.7rem;
+  text-align: center;
+}
+
+.setting-group input[type="color"] {
+  width: 24px;
+  height: 20px;
+  padding: 0;
+  border-radius: 3px;
+}
+
+.indicator-actions {
+  display: flex;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.indicator-btn {
+  flex: 1;
+  padding: 5px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.65rem;
+  transition: all 0.2s ease;
+}
+
+.indicator-btn:hover {
+  background: var(--accent-bg);
+  border-color: var(--accent);
+}
+
+.indicator-btn.remove {
+  background: rgba(255, 77, 77, 0.1);
+  border-color: rgba(255, 77, 77, 0.3);
+}
+
+.indicator-btn.remove:hover {
+  background: rgba(255, 77, 77, 0.2);
+}
+
+.chart-wrapper {
+  flex: 1;
+  position: relative;
+  background: var(--card);
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+#mainChart {
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+/* ==================== CHART ENHANCEMENTS ==================== */
+.axis-indicator {
+  position: absolute;
+  pointer-events: none;
+  z-index: 1002;
+  background: rgba(15, 23, 42, 0.95);
+  color: #E2E8F0;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  border: 1px solid #E2E8F0;
+  white-space: nowrap;
+}
+
+.y-axis-indicator {
+  right: 10px;
+  transform: translateY(-50%);
+}
+
+.x-axis-indicator {
+  bottom: 10px;
+  transform: translateX(-50%);
+}
+
+/* Live Icon & Reloading States */
+.live-icon {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  font-size: 1.2rem;
+  transition: all 0.3s ease;
+  z-index: 100;
+}
+
+.live-icon.pulsing {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+
+.reloading-sign {
+  position: absolute;
+  top: 20px;
+  right: 60px;
+  background: var(--accent-bg);
+  color: var(--accent);
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  border: 1px solid var(--accent);
+  z-index: 100;
+}
+
+/* Pyramid Block Metrics & Progress Indicators */
+.block-metrics {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  margin-right: 12px;
+}
+
+.pips-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  color: var(--gray);
+  font-weight: 500;
+}
+
+.progress-indicator {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.65rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  font-weight: 500;
+}
+
+.progress-indicator.complete {
+  background: var(--success-bg);
+  color: var(--green);
+  border-color: var(--green-border);
+}
+
+.progress-indicator.partial {
+  background: var(--accent-bg);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.progress-indicator:not(.complete):not(.partial) {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--gray);
+}
+
+/* Crosshair Visual Styles - WHITE */
+.crosshair-line {
+  position: absolute;
+  background: #FFFFFF;
+  pointer-events: none;
+  z-index: 100;
+}
+
+.crosshair-vertical {
+  width: 1px;
+  height: 100%;
+  top: 0;
+}
+
+.crosshair-horizontal {
+  height: 1px;
+  width: 100%;
+  left: 0;
+}
+
+.crosshair-dot {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: #FFFFFF;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 101;
+}
+
+/* Tooltip Locking Interface */
+.tooltip-locked {
+  border: 2px solid #FFFFFF !important;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.3) !important;
+}
+
+.lock-indicator {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  background: #FFFFFF;
+  color: #000;
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-size: 0.6rem;
+  font-weight: bold;
+}
+
+/* Enhanced Chart Type Visuals */
+.candlestick-up {
+  background: var(--success-bg);
+  border-color: var(--green-border);
+}
+
+.candlestick-down {
+  background: var(--danger-bg);
+  border-color: var(--red-border);
+}
+
+/* Trend Line Colors */
+.trend-bull {
+  border-color: var(--green-border) !important;
+}
+
+.trend-bear {
+  border-color: var(--red-border) !important;
+}
+
+/* ==================== CHART SYSTEM ENHANCEMENTS ==================== */
+/* Current Price Level Line */
+.current-price-level {
+  position: absolute;
+  height: 1px;
+  pointer-events: none;
+  z-index: 1000;
+  opacity: 0.7;
+  transition: top 0.1s ease;
+  left: 0;
+  right: 0;
+}
+
+/* Y-Axis Price Box */
+.y-axis-price-box {
+  position: absolute;
+  right: 0;
+  padding: 2px 4px;
+  border-radius: 3px 0 0 3px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  font-weight: 600;
+  z-index: 1000;
+  pointer-events: none;
+  border: 1px solid;
+  text-align: center;
+  min-width: 50px;
+  max-width: 60px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+/* Crosshair Display Box */
+.crosshair-display {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  z-index: 1000;
+  pointer-events: none;
+  display: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  min-width: 120px;
+}
+
+/* Enhanced Axis Frames */
+.chartjs-render-monitor {
+  border: 2px solid var(--axis-border) !important;
+}
+
+/* Zoom Active States */
+.control-btn.active {
+  background: var(--accent) !important;
+  border-color: var(--accent) !important;
+  color: white !important;
+  box-shadow: 0 2px 8px rgba(58, 134, 255, 0.3) !important;
+}
+
+/* Scrollbar Styling for Chart */
+.chart-wrapper::-webkit-scrollbar {
+  height: 8px;
+}
+
+.chart-wrapper::-webkit-scrollbar-track {
+  background: var(--bg);
+  border-radius: 4px;
+}
+
+.chart-wrapper::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+.chart-wrapper::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+}
+
+/* Chart Container Enhancements */
+.chart-container {
+  position: relative;
+  overflow: hidden;
+}
+
+/* Price Level Animations */
+@keyframes priceLevelPulse {
+  0% { opacity: 0.7; }
+  50% { opacity: 1; }
+  100% { opacity: 0.7; }
+}
+
+.current-price-level.bull {
+  animation: priceLevelPulse 2s infinite;
+}
+
+.current-price-level.bear {
+  animation: priceLevelPulse 1.5s infinite;
+}
+
+/* ==================== UTILITY CLASSES ==================== */
+.loading {
+  text-align: center;
+  padding: 40px;
+  color: var(--gray);
+  font-size: 1rem;
+  background: var(--card);
+  border-radius: 12px;
+  margin: 16px;
+  border: 1px solid var(--border);
+}
+
+.update-info {
+  text-align: center;
+  margin: 16px;
+  padding: 12px;
+  background: var(--accent-bg);
+  border-radius: 8px;
+  font-size: 0.85rem;
+  border: 1px solid var(--border);
+  color: var(--accent);
+  font-weight: 500;
+}
+
+/* Keyboard Shortcuts Indicator */
+.shortcuts-help {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 0.75rem;
+  color: var(--gray);
+  z-index: 1000;
+  display: none;
+  max-width: 300px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.shortcuts-help.visible {
+  display: block;
+}
+
+.shortcut-item {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
+  align-items: center;
+}
+
+.shortcut-key {
+  background: var(--bg);
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  font-family: 'JetBrains Mono', monospace;
+  margin-left: 8px;
+  font-size: 0.7rem;
+  min-width: 60px;
+  text-align: center;
+}
+
+/* Enhanced Loading States */
+.polling-status {
+  position: fixed;
+  bottom: 10px;
+  left: 10px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 0.7rem;
+  color: var(--gray);
+  z-index: 1000;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.polling-status.active {
+  border-color: var(--green-border);
+  color: var(--green);
+  background: var(--success-bg);
+}
+
+.polling-status.normal {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-bg);
+}
+
+/* Status Indicator */
+.status-indicator {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+}
+
+.status-indicator.active {
+  background: var(--green);
+  animation: blink 2s infinite;
+}
+
+.status-indicator.normal {
+  background: var(--accent);
+}
+
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0.3; }
+}
+
+/* ==================== FORM CONTROLS ==================== */
+select, option {
+  background-color: var(--card) !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+}
+
+select:focus {
+  outline: none;
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 2px rgba(58, 134, 255, 0.1) !important;
+}
+
+/* ==================== SCROLLBAR STYLING ==================== */
+.indicators-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.indicators-list::-webkit-scrollbar-track {
+  background: var(--bg);
+  border-radius: 2px;
+}
+
+.indicators-list::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 2px;
+}
+
+.indicators-list::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+}
+
+.tab-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.tab-content::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+
+.tab-content::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+
+.tab-content::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+}
+
+/* ==================== PERFORMANCE OPTIMIZATIONS ==================== */
+.chart-wrapper {
+  will-change: transform;
+  transform: translateZ(0);
+}
+
+.current-price-level, .y-axis-price-box, .crosshair-display {
+  will-change: transform, opacity;
+  transform: translateZ(0);
+}
+
+/* ==================== ACCESSIBILITY ENHANCEMENTS ==================== */
+@media (prefers-reduced-motion: reduce) {
+  .current-price-level, .y-axis-price-box, .crosshair-display {
+      animation: none !important;
+      transition: none !important;
+  }
   
-    if (currentChart) currentChart.destroy();
-    currentIndicatorValues = indicators || {};
+  .live-icon.pulsing {
+      animation: none !important;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  :root {
+      --border: #ffffff;
+      --grid: #ffffff;
+      --axis-border: #ffffff;
+  }
   
-    // Use CSS variables directly - no hardcoded colors!
-    const professionalTheme = {
-        primary: chartColors.line,
-        background: chartColors.areaFill
-    };
-    
-    let datasets = [];
-    if (currentChartType === 'line') {
-        datasets = createLineDataset(chartData, symbol, professionalTheme);
-    } else if (currentChartType === 'area') {
-        datasets = createAreaDataset(chartData, symbol, professionalTheme);
-    } else if (currentChartType === 'candlestick') {
-        datasets = createCandlestickDataset(chartData, symbol, professionalTheme);
-    } else if (currentChartType === 'trend') {
-        datasets = createLineDataset(chartData, symbol, professionalTheme);
-    }
-    datasets = datasets.concat(createIndicatorDatasets(indicators_data, professionalTheme));
-    const chartType = currentChartType === 'candlestick' ? 'candlestick' : 'line';
+  .block {
+      border: 2px solid var(--border);
+  }
   
-    currentChart = new Chart(ctx, {
-        type: chartType,
-        data: { datasets: datasets },
-        options: getEnhancedChartOptions(timeframe)
-    });
-    
-    initializeCurrentPriceLevel();
-    initializeCrosshairDisplay();
-    addCrosshairListeners();
-    initializeChartScroll();
-    renderIndicatorsList();
+  .current-price-level {
+      height: 2px;
+  }
+}
+
+/* ==================== RESPONSIVE DESIGN ==================== */
+@media (max-width: 768px) {
+  .header {
+    margin: 10px;
+    padding: 16px;
+  }
+ 
+  .header h1 {
+    font-size: 1.5rem;
+  }
+ 
+  .style-controls {
+    flex-direction: column;
+    gap: 6px;
+  }
+ 
+  .style-dropdown {
+    min-width: 160px;
+  }
+ 
+  .tabs-header {
+    padding: 0 8px;
+  }
+ 
+  .tab {
+    padding: 10px 14px;
+    font-size: 0.75rem;
+  }
+ 
+  .chart-controls {
+    gap: 6px;
+    padding: 12px;
+  }
+ 
+  .timeframe-select, .chart-type-select, .control-btn {
+    padding: 6px 10px;
+    font-size: 0.75rem;
+    min-width: auto;
+  }
+ 
+  .chart-type-section {
+    flex-direction: column;
+    gap: 6px;
+  }
+ 
+  .color-pickers {
+    justify-content: center;
+  }
+ 
+  .chart-area {
+    flex-direction: column;
+  }
+ 
+  .indicators-panel {
+    width: 100%;
+    height: 250px;
+  }
+ 
+  .indicators-panel.collapsed {
+    width: 100%;
+    height: 50px;
+  }
+ 
+  .children {
+    margin-left: 12px;
+    padding-left: 10px;
+  }
   
-    const latestPrice = chartData.length > 0 ? chartData[chartData.length - 1].y : 0;
-    updateCurrentPrice(latestPrice);
-    updateCurrentPriceLevel(latestPrice, 'neutral');
-  
-    console.log(`✅ Chart rendered: ${symbol} ${timeframe} (${currentChartType})`);
+  /* Responsive updates for new elements */
+  .block-metrics {
+    flex-direction: column;
+    gap: 4px;
+    margin-left: 0;
+    margin-right: 0;
+  }
+ 
+  .live-icon, .reloading-sign {
+    position: relative;
+    top: auto;
+    right: auto;
+    margin: 4px 0;
+  }
+ 
+  .shortcuts-help {
+    bottom: 10px;
+    right: 10px;
+    left: 10px;
+    max-width: none;
+  }
+ 
+  .polling-status {
+    bottom: 5px;
+    left: 5px;
+    font-size: 0.65rem;
+    padding: 4px 8px;
+  }
+
+  /* Mobile chart enhancements */
+  .crosshair-display {
+    top: 5px;
+    left: 5px;
+    font-size: 0.7rem;
+    padding: 6px 8px;
+    min-width: 100px;
+  }
+
+  .y-axis-price-box {
+    font-size: 0.7rem;
+    padding: 1px 4px;
+    min-width: 60px;
+  }
 }
-
-function loadChart(timeframe = 'H1') {
-    const chartStatus = document.getElementById('chartStatus');
-    if (!chartStatus) return;
-  
-    chartStatus.textContent = '🔄 Loading...';
-  
-    const indicatorParams = buildIndicatorParameters();
-  
-    fetch(`/api/chart-data/${timeframe}?pair=${currentPair}&pyramid_style=${currentPyramidStyle}${indicatorParams}`)
-        .then(response => {
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            return response.json();
-        })
-        .then(data => {
-            if (data.error) {
-                chartStatus.textContent = `❌ ${data.error}`;
-                return;
-            }
-          
-            // Validate chart data before rendering
-            if (!data.data || !Array.isArray(data.data) || data.data.length === 0) {
-                chartStatus.textContent = '❌ No chart data received';
-                return;
-            }
-          
-            renderProfessionalChart(data.data, timeframe, currentPair, data.indicators, data.indicators_data);
-            chartStatus.textContent = `✅ ${currentPair} ${timeframe}`;
-            currentTimeframe = timeframe;
-          
-            if (lastClickedPyramidBlock) {
-                setTimeout(() => {
-                    triggerTooltipAtTime(lastClickedPyramidBlock.time);
-                    lastClickedPyramidBlock = null;
-                }, 500);
-            }
-        })
-        .catch(error => {
-            console.error('Chart loading error:', error);
-            chartStatus.textContent = '❌ Failed to load chart data';
-        });
-}
-
-function buildIndicatorParameters() {
-    let params = '';
-    activeIndicators.forEach((config, indicatorId) => {
-        const baseType = indicatorId.split('_')[0];
-      
-        switch(baseType) {
-            case 'sma': case 'ema': case 'rsi':
-                params += `&${baseType}_period=${config.period}`;
-                break;
-            case 'macd':
-                params += `&${baseType}_fast=${config.fastPeriod}&${baseType}_slow=${config.slowPeriod}&${baseType}_signal=${config.signalPeriod}`;
-                break;
-            case 'bollinger':
-                params += `&${baseType}_period=${config.period}&${baseType}_std=${config.stdDev}`;
-                break;
-            case 'stochastic':
-                params += `&${baseType}_k=${config.kPeriod}&${baseType}_k_smooth=${config.kSmooth}&${baseType}_d_smooth=${config.dSmooth}`;
-                break;
-        }
-      
-        params += `&${baseType}_instance=${config.instanceNumber}`;
-    });
-  
-    return params;
-}
-
-// Chart dataset creators
-function createCandlestickDataset(priceData, symbol, theme) {
-    return [{
-        label: `${symbol} Price`,
-        data: priceData,
-        borderColor: theme.primary,
-        backgroundColor: 'transparent',
-        borderWidth: 2,
-        pointRadius: 0,
-        pointHoverRadius: 3,
-        tension: 0.1,
-        yAxisID: 'y',
-        fill: false
-    }];
-}
-
-function createLineDataset(priceData, symbol, theme) {
-    if (currentChartType === 'trend') {
-        return [{
-            label: `${symbol} Price`, data: priceData,
-            segment: { borderColor: (ctx) => {
-                if (ctx.p0.parsed.y === ctx.p1.parsed.y) return theme.primary;
-                return ctx.p1.parsed.y > ctx.p0.parsed.y ? chartColors.bull : chartColors.bear;
-            }},
-            borderWidth: 2, pointRadius: 0, pointHoverRadius: 3, tension: 0.1, yAxisID: 'y', fill: false
-        }];
-    } else {
-        return [{
-            label: `${symbol} Price`, data: priceData, borderColor: theme.primary, backgroundColor: 'transparent',
-            borderWidth: 2, pointRadius: 0, pointHoverRadius: 3, tension: 0.1, yAxisID: 'y', fill: false
-        }];
-    }
-}
-
-function createAreaDataset(priceData, symbol, theme) {
-    return [{
-        label: `${symbol} Price`, data: priceData, borderColor: theme.primary, backgroundColor: theme.background,
-        borderWidth: 2, pointRadius: 0, pointHoverRadius: 3, tension: 0.1, yAxisID: 'y',
-        fill: { target: 'origin', above: theme.background }
-    }];
-}
-
-function createIndicatorDatasets(indicators_data, theme) {
-    const datasets = [];
-    if (!indicators_data) return datasets;
-  
-    activeIndicators.forEach((config, indicatorId) => {
-        if (!config.visible) return;
-        const baseType = indicatorId.split('_')[0];
-      
-        switch(baseType) {
-            case 'bollinger':
-                if (indicators_data.bollinger) {
-                    const bb = indicators_data.bollinger;
-                    datasets.push(
-                        { label: `${config.name} Upper`, data: bb.upper, borderColor: config.color, borderWidth: 1, pointRadius: 0, yAxisID: 'y', fill: false },
-                        { label: `${config.name} Middle`, data: bb.middle, borderColor: config.color, borderWidth: 1.5, pointRadius: 0, yAxisID: 'y', fill: false },
-                        { label: `${config.name} Lower`, data: bb.lower, borderColor: config.color, borderWidth: 1, pointRadius: 0, yAxisID: 'y', fill: false }
-                    );
-                }
-                break;
-            case 'stochastic':
-                if (indicators_data.stoch_k) {
-                    datasets.push({ label: `${config.name} %K`, data: indicators_data.stoch_k, borderColor: config.color, borderWidth: 1.5, pointRadius: 0, yAxisID: 'y2', fill: false });
-                }
-                if (indicators_data.stoch_d) {
-                    datasets.push({ label: `${config.name} %D`, data: indicators_data.stoch_d, borderColor: config.color, borderWidth: 1.5, borderDash: [5, 5], pointRadius: 0, yAxisID: 'y2', fill: false });
-                }
-                break;
-            case 'supportresistance':
-                if (indicators_data.support_resistance) {
-                    datasets.push({ label: 'Support/Resistance', data: [], srLevels: indicators_data.support_resistance, supportColor: config.supportColor, resistanceColor: config.resistanceColor });
-                }
-                break;
-            default:
-                const instanceNumber = config.instanceNumber;
-                const dataKeys = [`${baseType}_${config.period}`, `${baseType}_${instanceNumber}`, baseType, `${baseType}_20`, `${baseType}_12`];
-              
-                let indicatorData = null;
-                for (const key of dataKeys) {
-                    if (indicators_data[key]) {
-                        indicatorData = indicators_data[key];
-                        break;
-                    }
-                }
-              
-                if (indicatorData) {
-                    datasets.push({
-                        label: `${config.name} #${instanceNumber}`, data: indicatorData, borderColor: config.color, borderWidth: 1.5,
-                        borderDash: baseType === 'ema' ? [2, 2] : [0, 0], pointRadius: 0, tension: 0, yAxisID: config.yAxis || 'y', fill: false
-                    });
-                }
-                break;
-        }
-    });
-    return datasets;
-}
-
-// FIXED: Chart options that use CSS variables
-function getEnhancedChartOptions(timeframe) {
-    return {
-        responsive: true,
-        maintainAspectRatio: false,
-        interaction: {
-            mode: 'nearest',
-            intersect: false,
-            axis: 'xy'
-        },
-        plugins: {
-            legend: {
-                display: false
-            },
-            tooltip: {
-                enabled: false
-            },
-            zoom: {
-                zoom: {
-                    drag: {
-                        enabled: false,
-                        modifierKey: null
-                    },
-                    wheel: {
-                        enabled: false
-                    },
-                    pinch: {
-                        enabled: false
-                    },
-                    mode: 'xy'
-                },
-                pan: {
-                    enabled: true,
-                    mode: 'xy',
-                    modifierKey: 'shift'
-                },
-                limits: {
-                    x: { min: 'original', max: 'original' },
-                    y: { min: 'original', max: 'original' }
-                }
-            }
-        },
-        scales: {
-            x: {
-                type: 'time',
-                time: {
-                    displayFormats: getProfessionalTimeFormats(timeframe)
-                },
-                grid: {
-                    color: 'var(--grid)', // USE CSS VARIABLE
-                    drawBorder: true,
-                    border: {
-                        color: 'var(--axis-border)', // USE CSS VARIABLE
-                        width: 2
-                    }
-                },
-                ticks: {
-                    color: 'var(--text)', // USE CSS VARIABLE
-                    maxRotation: 0,
-                    autoSkip: true,
-                    maxTicksLimit: 8,
-                    padding: 8,
-                    font: {
-                        size: 11,
-                        weight: '500'
-                    }
-                },
-                border: {
-                    display: true,
-                    color: 'var(--axis-border)', // USE CSS VARIABLE
-                    width: 2
-                }
-            },
-            y: {
-                position: 'right',
-                grid: {
-                    color: 'var(--grid)', // USE CSS VARIABLE
-                    drawBorder: true,
-                    border: {
-                        color: 'var(--axis-border)', // USE CSS VARIABLE
-                        width: 2
-                    }
-                },
-                ticks: {
-                    color: 'var(--text)', // USE CSS VARIABLE
-                    callback: (value) => value.toFixed(5),
-                    maxTicksLimit: 10,
-                    padding: 8,
-                    font: {
-                        size: 11,
-                        weight: '500'
-                    }
-                },
-                border: {
-                    display: true,
-                    color: 'var(--axis-border)', // USE CSS VARIABLE
-                    width: 2
-                }
-            },
-            y2: {
-                type: 'linear',
-                position: 'left',
-                grid: { 
-                    drawOnChartArea: false 
-                },
-                ticks: {
-                    color: 'var(--text)', // USE CSS VARIABLE
-                    callback: (value) => value.toFixed(2),
-                    maxTicksLimit: 5,
-                    padding: 8,
-                    font: {
-                        size: 11,
-                        weight: '500'
-                    }
-                },
-                border: {
-                    display: true,
-                    color: 'var(--axis-border)', // USE CSS VARIABLE
-                    width: 2
-                },
-                min: 0,
-                max: 100
-            }
-        },
-        // Force Chart.js to respect CSS background
-        onResize: (chart, size) => {
-            chart.canvas.style.backgroundColor = 'var(--card)';
-        }
-    };
-}
-
-// Chart Scroll Control - Reduced Sensitivity
-function initializeChartScroll() {
-    const canvas = document.getElementById('mainChart');
-    if (!canvas) return;
-   
-    canvas.addEventListener('wheel', function(event) {
-        if (!currentChart) return;
-       
-        event.preventDefault();
-       
-        // Only allow horizontal scrolling (left/right)
-        const xScale = currentChart.scales.x;
-        if (!xScale) return;
-       
-        const currentMin = xScale.min;
-        const currentMax = xScale.max;
-        const range = currentMax - currentMin;
-        const scrollSpeed = range * 0.03; // REDUCED sensitivity (from 0.1 to 0.03)
-       
-        if (event.deltaY > 0) {
-            // Scroll right (forward in time)
-            currentChart.options.scales.x.min = currentMin + scrollSpeed;
-            currentChart.options.scales.x.max = currentMax + scrollSpeed;
-        } else {
-            // Scroll left (back in time)
-            currentChart.options.scales.x.min = currentMin - scrollSpeed;
-            currentChart.options.scales.x.max = currentMax - scrollSpeed;
-        }
-       
-        currentChart.update('none');
-    });
-}
-
-// Current Price Level System - FIXED
-function initializeCurrentPriceLevel() {
-    const chartWrapper = document.querySelector('.chart-wrapper');
-    if (!chartWrapper) return;
-  
-    const existingLine = document.getElementById('currentPriceLevel');
-    if (existingLine) existingLine.remove();
-  
-    const currentPriceLevel = document.createElement('div');
-    currentPriceLevel.id = 'currentPriceLevel';
-    currentPriceLevel.className = 'current-price-level';
-    currentPriceLevel.style.display = 'none';
-  
-    chartWrapper.appendChild(currentPriceLevel);
-}
-
-function updateCurrentPriceLevel(price, direction) {
-    const currentPriceLevel = document.getElementById('currentPriceLevel');
-    if (!currentPriceLevel || !currentChart) return;
-  
-    const chartArea = currentChart.chartArea;
-    if (!chartArea) return;
-  
-    const yScale = currentChart.scales.y;
-    const pixel = yScale.getPixelForValue(price);
-  
-    if (pixel >= chartArea.top && pixel <= chartArea.bottom) {
-        currentPriceLevel.style.display = 'block';
-        currentPriceLevel.style.top = `${pixel}px`;
-        currentPriceLevel.style.left = `${chartArea.left}px`;
-        currentPriceLevel.style.width = `${chartArea.right - chartArea.left}px`; // FIXED: Full width
-        currentPriceLevel.style.height = '1px';
-      
-        // Set color based on direction
-        if (direction === 'up') {
-            currentPriceLevel.style.backgroundColor = 'var(--green)';
-            currentPriceLevel.classList.add('bull');
-            currentPriceLevel.classList.remove('bear', 'neutral');
-        } else if (direction === 'down') {
-            currentPriceLevel.style.backgroundColor = 'var(--red)';
-            currentPriceLevel.classList.add('bear');
-            currentPriceLevel.classList.remove('bull', 'neutral');
-        } else {
-            currentPriceLevel.style.backgroundColor = 'var(--accent)';
-            currentPriceLevel.classList.add('neutral');
-            currentPriceLevel.classList.remove('bull', 'bear');
-        }
-      
-        // Update Y-axis price box
-        updateYAxisPriceBox(price, direction);
-    } else {
-        currentPriceLevel.style.display = 'none';
-    }
-}
-
-function updateYAxisPriceBox(price, direction) {
-    const chartWrapper = document.querySelector('.chart-wrapper');
-    if (!chartWrapper) return;
-  
-    let priceBox = document.getElementById('yAxisPriceBox');
-    if (!priceBox) {
-        priceBox = document.createElement('div');
-        priceBox.id = 'yAxisPriceBox';
-        priceBox.className = 'y-axis-price-box';
-        priceBox.style.cssText = `
-            position: absolute;
-            right: 0;
-            padding: 2px 4px; /* Reduced padding */
-            border-radius: 3px 0 0 3px; /* Rounded left side only */
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.7rem; /* Smaller font */
-            font-weight: 600;
-            z-index: 1000;
-            pointer-events: none;
-            border: 1px solid;
-            text-align: center;
-            min-width: 50px; /* Reduced width */
-            max-width: 60px; /* Maximum width */
-            overflow: hidden;
-            white-space: nowrap;
-        `;
-        chartWrapper.appendChild(priceBox);
-    }
-  
-    // Format price to fit in smaller box
-    const formattedPrice = parseFloat(price.toFixed(5)).toString();
-    priceBox.textContent = formattedPrice.length > 8 ? price.toFixed(4) : price.toFixed(5);
-    priceBox.style.display = 'block';
-  
-    // Position on Y-axis
-    const chartArea = currentChart.chartArea;
-    const yScale = currentChart.scales.y;
-    const pixel = yScale.getPixelForValue(price);
-  
-    priceBox.style.top = `${pixel - 8}px`; /* Better vertical centering */
-  
-    // Set color based on direction
-    if (direction === 'up') {
-        priceBox.style.backgroundColor = 'var(--success-bg)';
-        priceBox.style.color = 'var(--green)';
-        priceBox.style.borderColor = 'var(--green-border)';
-    } else if (direction === 'down') {
-        priceBox.style.backgroundColor = 'var(--danger-bg)';
-        priceBox.style.color = 'var(--red)';
-        priceBox.style.borderColor = 'var(--red-border)';
-    } else {
-        priceBox.style.backgroundColor = 'var(--accent-bg)';
-        priceBox.style.color = 'var(--accent)';
-        priceBox.style.borderColor = 'var(--accent)';
-    }
-}
-
-// Enhanced Zoom System with Active State - FIXED
-function zoomIn() {
-    if (!currentChart) return;
-  
-    // Toggle drag-to-zoom mode
-    if (isZoomModeActive && currentZoomMode === 'in') {
-        // Deactivate
-        isZoomModeActive = false;
-        currentZoomMode = null;
-        currentChart.options.plugins.zoom.zoom.drag.enabled = false;
-        updateZoomButtonState('reset');
-    } else {
-        // Activate drag-to-zoom
-        isZoomModeActive = true;
-        currentZoomMode = 'in';
-        currentChart.options.plugins.zoom.zoom.drag.enabled = true;
-        updateZoomButtonState('in');
-    }
-  
-    currentChart.update('none');
-}
-
-function zoomOut() {
-    if (!currentChart) return;
-  
-    // ALWAYS one-click zoom out (no drag mode)
-    currentChart.zoom(0.8); // Zoom out 20% immediately
-    updateZoomButtonState('out');
-   
-    // Remove active state after click
-    setTimeout(() => {
-        updateZoomButtonState('reset');
-    }, 500);
-}
-
-function resetZoom() {
-    if (!currentChart) return;
-  
-    isZoomModeActive = false;
-    currentZoomMode = null;
-    currentChart.resetZoom();
-    currentChart.options.plugins.zoom.zoom.drag.enabled = false;
-    currentChart.update('none');
-  
-    updateZoomButtonState('reset');
-}
-
-function updateZoomButtonState(mode) {
-    const zoomInBtn = document.querySelector('.control-btn');
-    const zoomOutBtn = document.querySelectorAll('.control-btn')[2];
-  
-    // Reset both first
-    if (zoomInBtn) zoomInBtn.classList.remove('active');
-    if (zoomOutBtn) zoomOutBtn.classList.remove('active');
-  
-    // Apply active state only to current mode
-    if (mode === 'in') {
-        if (zoomInBtn && zoomInBtn.textContent.includes('🔍+')) {
-            zoomInBtn.classList.add('active'); // Blue background
-        }
-    } else if (mode === 'out') {
-        if (zoomOutBtn && zoomOutBtn.textContent.includes('🔍-')) {
-            zoomOutBtn.classList.add('active'); // Blue background
-        }
-    }
-    // 'reset' mode leaves both inactive
-}
-
-// Enhanced Crosshair System with Fixed Display - FIXED
-function initializeCrosshairDisplay() {
-    const chartWrapper = document.querySelector('.chart-wrapper');
-    if (!chartWrapper) return;
-  
-    // Remove old axis indicators
-    if (axisIndicators.yIndicator) axisIndicators.yIndicator.remove();
-    if (axisIndicators.xIndicator) axisIndicators.xIndicator.remove();
-  
-    // Create fixed crosshair display
-    let crosshairDisplay = document.getElementById('crosshairDisplay');
-    if (!crosshairDisplay) {
-        crosshairDisplay = document.createElement('div');
-        crosshairDisplay.id = 'crosshairDisplay';
-        crosshairDisplay.className = 'crosshair-display';
-        crosshairDisplay.style.cssText = `
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            background: var(--card);
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            padding: 8px 12px;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.75rem;
-            z-index: 1000;
-            pointer-events: none;
-            display: none;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-        `;
-        chartWrapper.appendChild(crosshairDisplay);
-    }
-}
-
-function updateCrosshairDisplay(price, time) {
-    const crosshairDisplay = document.getElementById('crosshairDisplay');
-    if (!crosshairDisplay) return;
-  
-    if (price !== null && time) {
-        crosshairDisplay.innerHTML = `
-            <div style="color: var(--text); font-weight: 600; margin-bottom: 2px;">${price.toFixed(5)}</div>
-            <div style="color: var(--gray); font-size: 0.7rem;">${time}</div>
-        `;
-        crosshairDisplay.style.display = 'block';
-    } else {
-        crosshairDisplay.style.display = 'none';
-    }
-}
-
-function hideCrosshairDisplay() {
-    const crosshairDisplay = document.getElementById('crosshairDisplay');
-    if (crosshairDisplay) {
-        crosshairDisplay.style.display = 'none';
-    }
-}
-
-function addCrosshairListeners() {
-    const canvas = document.getElementById('mainChart');
-    if (!canvas) return;
-   
-    canvas.addEventListener('mousemove', function(event) {
-        if (tooltipLocked || !crosshairEnabled || !currentChart) return;
-       
-        const rect = canvas.getBoundingClientRect();
-        crosshairX = event.clientX - rect.left;
-        crosshairY = event.clientY - rect.top;
-        crosshairVisible = true;
-       
-        const chartArea = currentChart.chartArea;
-        const yScale = currentChart.scales.y;
-        const xScale = currentChart.scales.x;
-       
-        if (yScale && xScale && chartArea) {
-            const price = yScale.getValueForPixel(crosshairY);
-            const timeValue = xScale.getValueForPixel(crosshairX);
-            const timeText = timeValue ? new Date(timeValue).toLocaleString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-                hour12: false
-            }) : '';
-           
-            updateCrosshairDisplay(price, timeText);
-            updateCurrentPrice(price);
-        }
-       
-        // REDRAW CHART TO SHOW CROSSHAIR LINES
-        if (currentChart) currentChart.draw();
-    });
-   
-    canvas.addEventListener('mouseleave', function() {
-        crosshairVisible = false;
-        hideCrosshairDisplay();
-        if (currentChart) currentChart.draw();
-    });
-   
-    // OVERRIDE CHART DRAW TO INCLUDE CROSSHAIR LINES
-    if (currentChart) {
-        const originalDraw = currentChart.draw;
-        currentChart.draw = function() {
-            originalDraw.call(this);
-            if (crosshairEnabled && crosshairVisible) {
-                drawCrosshair();
-            }
-        };
-    }
-}
-
-// WHITE CROSSHAIR - FIXED
-function drawCrosshair() {
-    if (!crosshairEnabled || !crosshairVisible || !currentChart) return;
-   
-    const ctx = currentChart.ctx;
-    const chartArea = currentChart.chartArea;
-   
-    const boundedX = Math.max(chartArea.left, Math.min(chartArea.right, crosshairX));
-    const boundedY = Math.max(chartArea.top, Math.min(chartArea.bottom, crosshairY));
-   
-    if (boundedX < chartArea.left || boundedX > chartArea.right ||
-        boundedY < chartArea.top || boundedY > chartArea.bottom) return;
-   
-    ctx.save();
-   
-    // VERTICAL LINE - WHITE
-    ctx.strokeStyle = '#FFFFFF'; // WHITE
-    ctx.lineWidth = 1;
-    ctx.setLineDash([5, 5]);
-    ctx.beginPath();
-    ctx.moveTo(boundedX, chartArea.top);
-    ctx.lineTo(boundedX, chartArea.bottom);
-    ctx.stroke();
-   
-    // HORIZONTAL LINE - WHITE
-    ctx.beginPath();
-    ctx.moveTo(chartArea.left, boundedY);
-    ctx.lineTo(chartArea.right, boundedY);
-    ctx.stroke();
-   
-    // CENTER DOT - WHITE
-    ctx.fillStyle = '#FFFFFF'; // WHITE
-    ctx.setLineDash([]);
-    ctx.beginPath();
-    ctx.arc(boundedX, boundedY, 3, 0, 2 * Math.PI);
-    ctx.fill();
-   
-    ctx.restore();
-}
-
-function toggleCrosshair() {
-    crosshairEnabled = !crosshairEnabled;
-    const crosshairBtn = document.querySelector('.control-btn');
-   
-    if (crosshairBtn && crosshairBtn.textContent.includes('Cross')) {
-        if (crosshairEnabled) {
-            crosshairBtn.innerHTML = '⊕ Cross ON';
-            crosshairBtn.classList.add('active');
-        } else {
-            crosshairBtn.innerHTML = '⊕ Cross OFF';
-            crosshairBtn.classList.remove('active');
-        }
-    }
-   
-    if (!crosshairEnabled) {
-        crosshairVisible = false;
-        hideCrosshairDisplay();
-    }
-   
-    // REDRAW CHART TO SHOW/HIDE CROSSHAIR
-    if (currentChart) currentChart.draw();
-}
-
-// Chart controls and utilities
-function setChartType(type) {
-    currentChartType = type;
-  
-    const chartTypeSelect = document.getElementById('chartTypeSelect');
-    if (chartTypeSelect) {
-        chartTypeSelect.value = type;
-    }
-  
-    if (currentTimeframe) {
-        loadChart(currentTimeframe);
-    }
-}
-
-function updateChartTimeframe() {
-    const timeframe = document.getElementById('timeframeSelect').value;
-    loadChart(timeframe);
-}
-
-function downloadChart() {
-    if (!currentChart) return;
-  
-    const canvas = document.getElementById('mainChart');
-    const link = document.createElement('a');
-    link.download = `chart-${currentPair}-${currentTimeframe}-${new Date().toISOString().split('T')[0]}.png`;
-    link.href = canvas.toDataURL('image/png');
-    link.click();
-}
-
-// Chart time utilities
-function getProfessionalTimeUnit(timeframe) {
-    const units = {
-        'M1': 'minute', 'M5': 'minute', 'M15': 'minute',
-        'H1': 'hour', 'H4': 'hour', 'D1': 'day'
-    };
-    return units[timeframe] || 'hour';
-}
-
-function getProfessionalTimeFormats(timeframe) {
-    return {
-        minute: 'HH:mm',
-        hour: 'MMM dd HH:mm',
-        day: 'MMM dd, yyyy'
-    };
-}
-
-// Current price display - FIXED
-function updateCurrentPrice(price) {
-    const currentPriceElement = document.getElementById('currentPrice');
-    if (currentPriceElement && price) {
-        const currentPriceValue = typeof price === 'number' ? price.toFixed(5) : price;
-        currentPriceElement.textContent = currentPriceValue;
-      
-        const lastPrice = parseFloat(currentPriceElement.dataset.lastPrice) || price;
-        let direction = 'neutral';
-      
-        if (price > lastPrice) {
-            currentPriceElement.style.color = 'var(--green)';
-            currentPriceElement.style.borderColor = 'var(--green-border)';
-            direction = 'up';
-        } else if (price < lastPrice) {
-            currentPriceElement.style.color = 'var(--red)';
-            currentPriceElement.style.borderColor = 'var(--red-border)';
-            direction = 'down';
-        } else {
-            currentPriceElement.style.color = 'var(--gray)';
-            currentPriceElement.style.borderColor = 'var(--gray-border)';
-        }
-      
-        currentPriceElement.dataset.lastPrice = price;
-        updateCurrentPriceLevel(price, direction);
-    }
-}
-
-// Remove Chart Shift System Completely
-function initializeChartShiftTriangle() {
-    // Chart shift system removed
-    console.log("🗑️ Chart shift system removed");
-}
-
-// ==================== INDICATORS MANAGEMENT ====================
-function initializeIndicatorsPanel() {
-    renderIndicatorsList();
-}
-
-function toggleIndicatorsPanel() {
-    const panel = document.getElementById('indicatorsPanel');
-    const toggleBtn = document.querySelector('.panel-toggle');
-   
-    if (panel.classList.contains('collapsed')) {
-        panel.classList.remove('collapsed');
-        if (toggleBtn) toggleBtn.innerHTML = '◀';
-    } else {
-        panel.classList.add('collapsed');
-        if (toggleBtn) toggleBtn.innerHTML = '▶';
-    }
-}
-
-function addIndicatorFromDropdown(indicatorType) {
-    if (!indicatorType) return;
-   
-    const dropdown = document.getElementById('indicatorsDropdown');
-    if (dropdown) dropdown.value = '';
-   
-    const instanceNumber = getNextAvailableInstanceNumber(indicatorType);
-    const indicatorId = `${indicatorType}_${instanceNumber}`;
-   
-    const baseConfig = getIndicatorBaseConfig(indicatorType);
-    if (!baseConfig) return;
-   
-    activeIndicators.set(indicatorId, {
-        ...baseConfig,
-        id: indicatorId,
-        instanceNumber: instanceNumber,
-        visible: true,
-        settingsVisible: true
-    });
-   
-    indicatorInstances[indicatorType].push(instanceNumber);
-    renderIndicatorsList();
-   
-    if (currentTimeframe) {
-        loadChart(currentTimeframe);
-    }
-   
-    console.log(`✅ Added indicator: ${indicatorType} #${instanceNumber}`);
-}
-
-function getNextAvailableInstanceNumber(indicatorType) {
-    const instances = indicatorInstances[indicatorType];
-    if (instances.length === 0) return 1;
-   
-    for (let i = 1; i <= instances.length + 1; i++) {
-        if (!instances.includes(i)) return i;
-    }
-   
-    return Math.max(...instances) + 1;
-}
-
-function getIndicatorBaseConfig(type) {
-    const baseConfigs = {
-        'sma': { name: 'SMA', period: 20, color: '#00D394', minPeriod: 1, maxPeriod: 200 },
-        'ema': { name: 'EMA', period: 12, color: '#3A86FF', minPeriod: 1, maxPeriod: 200 },
-        'rsi': { name: 'RSI', period: 14, color: '#F59E0B', minPeriod: 1, maxPeriod: 50, yAxis: 'y2' },
-        'macd': { name: 'MACD', fastPeriod: 12, slowPeriod: 26, signalPeriod: 9, color: '#10B981', minPeriod: 1, maxPeriod: 50 },
-        'bollinger': { name: 'Bollinger', period: 20, stdDev: 2, color: '#EF4444', minPeriod: 1, maxPeriod: 50 },
-        'stochastic': { name: 'Stochastic', kPeriod: 14, kSmooth: 3, dSmooth: 3, color: '#8B5CF6', minPeriod: 1, maxPeriod: 50, yAxis: 'y2' },
-        'supportresistance': { name: 'Support/Resistance', supportColor: '#00D394', resistanceColor: '#FF4D4D' }
-    };
-    return baseConfigs[type];
-}
-
-function removeIndicator(indicatorId) {
-    if (activeIndicators.has(indicatorId)) {
-        const indicator = activeIndicators.get(indicatorId);
-        const indicatorType = indicatorId.split('_')[0];
-        const instanceNumber = indicator.instanceNumber;
-       
-        indicatorInstances[indicatorType] = indicatorInstances[indicatorType].filter(
-            num => num !== instanceNumber
-        );
-       
-        activeIndicators.delete(indicatorId);
-        renderIndicatorsList();
-       
-        if (currentTimeframe) {
-            loadChart(currentTimeframe);
-        }
-        console.log(`🗑️ Removed indicator: ${indicatorId}`);
-    }
-}
-
-function updateIndicatorSetting(indicatorId, setting, value) {
-    const indicator = activeIndicators.get(indicatorId);
-    if (indicator) {
-        if (setting.includes('Period') || setting === 'period' || setting === 'stdDev' || setting === 'kSmooth' || setting === 'dSmooth') {
-            value = parseInt(value);
-            const minVal = indicator.minPeriod || 1;
-            const maxVal = indicator.maxPeriod || 200;
-            if (value < minVal) value = minVal;
-            if (value > maxVal) value = maxVal;
-        }
-       
-        indicator[setting] = value;
-        activeIndicators.set(indicatorId, indicator);
-       
-        if (currentTimeframe) {
-            loadChart(currentTimeframe);
-        }
-    }
-}
-
-function toggleIndicatorSettings(indicatorId) {
-    const indicator = activeIndicators.get(indicatorId);
-    if (indicator) {
-        indicator.settingsVisible = !indicator.settingsVisible;
-        activeIndicators.set(indicatorId, indicator);
-        renderIndicatorsList();
-        console.log(`⚙️ Toggled settings for: ${indicatorId}`);
-    }
-}
-
-function renderIndicatorsList() {
-    const indicatorsList = document.getElementById('indicatorsList');
-    if (!indicatorsList) return;
-    if (activeIndicators.size === 0) {
-        indicatorsList.innerHTML = '<div class="no-indicators">No indicators added</div>';
-        return;
-    }
-    indicatorsList.innerHTML = Array.from(activeIndicators.entries()).map(([id, config]) => {
-        const value = getIndicatorDisplayValue(id, config);
-        const settingsHtml = generateIndicatorSettings(id, config);
-       
-        return `
-            <div class="indicator-item ${config.visible ? 'active' : ''}">
-                <div class="indicator-header" onclick="toggleIndicatorSettings('${id}')">
-                    <div class="indicator-title">
-                        <span class="indicator-status">●</span>
-                        ${config.name} #${config.instanceNumber}
-                    </div>
-                    <div class="indicator-value">${value}</div>
-                </div>
-                ${config.settingsVisible ? `
-                    <div class="indicator-settings">
-                        ${settingsHtml}
-                        <div class="indicator-actions">
-                            <button class="indicator-btn remove" onclick="removeIndicator('${id}')">Remove Line</button>
-                        </div>
-                    </div>
-                ` : ''}
-            </div>
-        `;
-    }).join('');
-}
-
-function generateIndicatorSettings(indicatorId, config) {
-    const baseType = indicatorId.split('_')[0];
-   
-    switch(baseType) {
-        case 'sma': case 'ema': case 'rsi':
-            return `
-                <div class="setting-group">
-                    <label>Period:</label>
-                    <input type="number" value="${config.period}" min="${config.minPeriod}" max="${config.maxPeriod}" onchange="updateIndicatorSetting('${indicatorId}', 'period', parseInt(this.value))">
-                </div>
-                <div class="setting-group">
-                    <label>Color:</label>
-                    <input type="color" value="${config.color}" onchange="updateIndicatorSetting('${indicatorId}', 'color', this.value)">
-                </div>
-            `;
-        case 'macd':
-            return `
-                <div class="setting-group">
-                    <label>Fast Period:</label>
-                    <input type="number" value="${config.fastPeriod}" min="1" max="50" onchange="updateIndicatorSetting('${indicatorId}', 'fastPeriod', parseInt(this.value))">
-                </div>
-                <div class="setting-group">
-                    <label>Slow Period:</label>
-                    <input type="number" value="${config.slowPeriod}" min="1" max="50" onchange="updateIndicatorSetting('${indicatorId}', 'slowPeriod', parseInt(this.value))">
-                </div>
-                <div class="setting-group">
-                    <label>Signal Period:</label>
-                    <input type="number" value="${config.signalPeriod}" min="1" max="50" onchange="updateIndicatorSetting('${indicatorId}', 'signalPeriod', parseInt(this.value))">
-                </div>
-                <div class="setting-group">
-                    <label>Color:</label>
-                    <input type="color" value="${config.color}" onchange="updateIndicatorSetting('${indicatorId}', 'color', this.value)">
-                </div>
-            `;
-        case 'bollinger':
-            return `
-                <div class="setting-group">
-                    <label>Period:</label>
-                    <input type="number" value="${config.period}" min="1" max="50" onchange="updateIndicatorSetting('${indicatorId}', 'period', parseInt(this.value))">
-                </div>
-                <div class="setting-group">
-                    <label>Std Dev:</label>
-                    <input type="number" value="${config.stdDev}" min="1" max="5" step="0.1" onchange="updateIndicatorSetting('${indicatorId}', 'stdDev', parseFloat(this.value))">
-                </div>
-                <div class="setting-group">
-                    <label>Color:</label>
-                    <input type="color" value="${config.color}" onchange="updateIndicatorSetting('${indicatorId}', 'color', this.value)">
-                </div>
-            `;
-        case 'stochastic':
-            return `
-                <div class="setting-group">
-                    <label>%K Period:</label>
-                    <input type="number" value="${config.kPeriod}" min="1" max="50" onchange="updateIndicatorSetting('${indicatorId}', 'kPeriod', parseInt(this.value))">
-                </div>
-                <div class="setting-group">
-                    <label>%K Smooth:</label>
-                    <input type="number" value="${config.kSmooth}" min="1" max="10" onchange="updateIndicatorSetting('${indicatorId}', 'kSmooth', parseInt(this.value))">
-                </div>
-                <div class="setting-group">
-                    <label>%D Smooth:</label>
-                    <input type="number" value="${config.dSmooth}" min="1" max="10" onchange="updateIndicatorSetting('${indicatorId}', 'dSmooth', parseInt(this.value))">
-                </div>
-                <div class="setting-group">
-                    <label>Color:</label>
-                    <input type="color" value="${config.color}" onchange="updateIndicatorSetting('${indicatorId}', 'color', this.value)">
-                </div>
-            `;
-        case 'supportresistance':
-            return `
-                <div class="setting-group">
-                    <label>Support Color:</label>
-                    <input type="color" value="${config.supportColor}" onchange="updateIndicatorSetting('${indicatorId}', 'supportColor', this.value)">
-                </div>
-                <div class="setting-group">
-                    <label>Resistance Color:</label>
-                    <input type="color" value="${config.resistanceColor}" onchange="updateIndicatorSetting('${indicatorId}', 'resistanceColor', this.value)">
-                </div>
-            `;
-        default:
-            return `
-                <div class="setting-group">
-                    <label>Color:</label>
-                    <input type="color" value="${config.color}" onchange="updateIndicatorSetting('${indicatorId}', 'color', this.value)">
-                </div>
-            `;
-    }
-}
-
-function getIndicatorDisplayValue(indicatorId, config) {
-    const baseType = indicatorId.split('_')[0];
-   
-    switch(baseType) {
-        case 'bollinger':
-            const bbMiddle = currentIndicatorValues.bb_middle;
-            return bbMiddle ? `BB: ${bbMiddle.toFixed(5)}` : '--';
-        case 'stochastic':
-            const stochK = currentIndicatorValues.stoch_k;
-            const stochD = currentIndicatorValues.stoch_d;
-            if (stochK && stochD) return `K:${stochK.toFixed(1)} D:${stochD.toFixed(1)}`;
-            return '--';
-        case 'macd':
-            const macd = currentIndicatorValues.macd;
-            const macdSignal = currentIndicatorValues.macd_signal;
-            if (macd && macdSignal) return `MACD:${macd.toFixed(4)} Signal:${macdSignal.toFixed(4)}`;
-            return '--';
-        case 'supportresistance':
-            return 'Auto';
-        default:
-            const instanceNumber = config.instanceNumber;
-            const valueKeys = [
-                `${baseType}_${config.period}`, `${baseType}_${instanceNumber}`, baseType, `${baseType}_20`, `${baseType}_12`
-            ];
-           
-            for (const key of valueKeys) {
-                if (currentIndicatorValues && currentIndicatorValues[key] !== undefined) {
-                    const value = currentIndicatorValues[key];
-                    return typeof value === 'number' ? value.toFixed(4) : '--';
-                }
-            }
-            return '--';
-    }
-}
-
-// ==================== UTILITIES & HELPERS ====================
-// Volume formatting
-function formatVolume(volume) {
-    if (!volume && volume !== 0) return '--';
-    const numVolume = parseFloat(volume);
-    if (numVolume >= 1000000) return `${(numVolume / 1000000).toFixed(1)}M`;
-    if (numVolume >= 1000) return `${(numVolume / 1000).toFixed(1)}K`;
-    return numVolume.toFixed(0);
-}
-
-// Color management
-function initializeColorPickers() {
-    updateColorPickers();
-}
-
-function updateColorPickers() {
-    const colorPickers = document.getElementById('colorPickers');
-    if (!colorPickers) return;
-    let colorHTML = `
-        <div class="color-picker">
-            <label>Line Color:</label>
-            <input type="color" id="lineColor" value="${chartColors.line}" onchange="updateChartColors()">
-        </div>
-    `;
-   
-    colorPickers.innerHTML = colorHTML;
-   
-    if (currentTimeframe && currentChart) {
-        loadChart(currentTimeframe);
-    }
-}
-
-function updateChartColors() {
-    const lineColorInput = document.getElementById('lineColor');
-    if (lineColorInput) chartColors.line = lineColorInput.value;
-   
-    chartColors.areaFill = 'rgba(58, 134, 255, 0.15)';
-   
-    if (currentTimeframe) {
-        loadChart(currentTimeframe);
-    }
-}
-
-// Current price display
-function updateCurrentPrice(price) {
-    const currentPriceElement = document.getElementById('currentPrice');
-    if (currentPriceElement && price) {
-        currentPriceElement.textContent = typeof price === 'number' ? price.toFixed(5) : price;
-       
-        const lastPrice = parseFloat(currentPriceElement.dataset.lastPrice) || price;
-        if (price > lastPrice) {
-            currentPriceElement.style.color = 'var(--green)';
-            currentPriceElement.style.borderColor = 'var(--green-border)';
-        } else if (price < lastPrice) {
-            currentPriceElement.style.color = 'var(--red)';
-            currentPriceElement.style.borderColor = 'var(--red-border)';
-        }
-        currentPriceElement.dataset.lastPrice = price;
-    }
-}
-
-// Keyboard shortcuts
-function handleKeyboardShortcuts(e) {
-    if (e.ctrlKey || e.metaKey) {
-        switch(e.key) {
-            case '=':
-                e.preventDefault();
-                zoomIn();
-                break;
-            case '-':
-                e.preventDefault();
-                zoomOut();
-                break;
-            case '0':
-                e.preventDefault();
-                resetZoom();
-                break;
-            case 's':
-                e.preventDefault();
-                downloadChart();
-                break;
-        }
-    }
-   
-    // Additional shortcuts without modifier
-    switch(e.key) {
-        case 'c':
-            if (!e.ctrlKey && !e.metaKey) {
-                e.preventDefault();
-                toggleCrosshair();
-            }
-            break;
-        case 'i':
-            if (!e.ctrlKey && !e.metaKey) {
-                e.preventDefault();
-                toggleIndicatorsPanel();
-            }
-            break;
-    }
-}
-
-// ==================== EXPORT & STARTUP ====================
-// Export functions for global access
-window.MegaFlowzDashboard = {
-    initializeDashboard,
-    loadChart,
-    updateDashboard,
-    changePair,
-    changePyramidStyle,
-    setChartType,
-    addIndicatorFromDropdown,
-    removeIndicator,
-    toggleCrosshair,
-    downloadChart,
-    getPollingStatus,
-    onUserAction
-};
-
-// Global functions needed for HTML event handlers
-window.toggleBlock = toggleBlock;
-window.toggleIndicatorSettings = toggleIndicatorSettings;
-window.updateIndicatorSetting = updateIndicatorSetting;
-window.removeIndicator = removeIndicator;
-window.setPyramidSize = setPyramidSize;
-window.switchTab = switchTab;
-window.updateChartTimeframe = updateChartTimeframe;
-window.setChartType = setChartType;
-window.toggleIndicatorsPanel = toggleIndicatorsPanel;
-window.toggleCrosshair = toggleCrosshair;
-window.downloadChart = downloadChart;
-window.zoomIn = zoomIn;
-window.zoomOut = zoomOut;
-window.resetZoom = resetZoom;
-window.addIndicatorFromDropdown = addIndicatorFromDropdown;
-
-console.log("🚀 MEGA FLOWZ Dashboard Script Loaded Successfully!");

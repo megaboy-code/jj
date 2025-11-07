@@ -12,6 +12,8 @@ let currentPyramidStyle = 'daily';
 let currentPair = 'EUR/USD';
 let activeIndicators = new Map();
 let crosshairEnabled = true;
+let isZoomModeActive = false;
+let currentZoomMode = null;
 
 // Smart Polling System State
 let isActivePollingMode = false;
@@ -685,7 +687,9 @@ function switchTab(tabName) {
 
 
 
+
 // ==================== CHART SYSTEM ====================
+
 // Chart rendering and datasets
 function renderProfessionalChart(chartData, timeframe, symbol, indicators, indicators_data) {
     const ctx = document.getElementById('mainChart').getContext('2d');
@@ -700,7 +704,7 @@ function renderProfessionalChart(chartData, timeframe, symbol, indicators, indic
         text: '#F1F5F9',
         textSecondary: '#94A3B8',
         accent: '#8B5CF6',
-        axisBorder: '#334155'
+        axisBorder: '#2a2f36'
     };
     let datasets = [];
     if (currentChartType === 'line') {
@@ -914,41 +918,7 @@ function getEnhancedChartOptions(timeframe, theme) {
                 display: false
             },
             tooltip: {
-                enabled: false,
-                mode: 'nearest',
-                intersect: false,
-                backgroundColor: 'rgba(15, 23, 42, 0.95)',
-                titleColor: theme.text,
-                bodyColor: theme.textSecondary,
-                borderColor: theme.grid,
-                borderWidth: 1,
-                cornerRadius: 6,
-                padding: 12,
-                callbacks: {
-                    title: function(context) {
-                        const date = new Date(context[0].parsed.x);
-                        return date.toLocaleDateString('en-US', {
-                            weekday: 'short',
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                            hour12: false
-                        });
-                    },
-                    label: function(context) {
-                        let label = context.dataset.label || '';
-                        if (label) label += ': ';
-                        if (context.parsed.y !== null) {
-                            label += new Intl.NumberFormat('en-US', {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 5
-                            }).format(context.parsed.y);
-                        }
-                        return label;
-                    }
-                }
+                enabled: false
             },
             zoom: {
                 zoom: {
@@ -982,15 +952,15 @@ function getEnhancedChartOptions(timeframe, theme) {
                     displayFormats: getProfessionalTimeFormats(timeframe)
                 },
                 grid: {
-                    color: theme.grid,
+                    color: 'var(--grid)',
                     drawBorder: true,
                     border: {
-                        color: theme.axisBorder,
+                        color: 'var(--axis-border)',
                         width: 2
                     }
                 },
                 ticks: {
-                    color: theme.text,
+                    color: 'var(--text)',
                     maxRotation: 0,
                     autoSkip: true,
                     maxTicksLimit: 8,
@@ -1002,22 +972,22 @@ function getEnhancedChartOptions(timeframe, theme) {
                 },
                 border: {
                     display: true,
-                    color: theme.axisBorder,
+                    color: 'var(--axis-border)',
                     width: 2
                 }
             },
             y: {
                 position: 'right',
                 grid: {
-                    color: theme.grid,
+                    color: 'var(--grid)',
                     drawBorder: true,
                     border: {
-                        color: theme.axisBorder,
+                        color: 'var(--axis-border)',
                         width: 2
                     }
                 },
                 ticks: {
-                    color: theme.text,
+                    color: 'var(--text)',
                     callback: (value) => value.toFixed(5),
                     maxTicksLimit: 10,
                     padding: 8,
@@ -1028,7 +998,7 @@ function getEnhancedChartOptions(timeframe, theme) {
                 },
                 border: {
                     display: true,
-                    color: theme.axisBorder,
+                    color: 'var(--axis-border)',
                     width: 2
                 }
             },
@@ -1037,7 +1007,7 @@ function getEnhancedChartOptions(timeframe, theme) {
                 position: 'left',
                 grid: { drawOnChartArea: false },
                 ticks: {
-                    color: theme.text,
+                    color: 'var(--text)',
                     callback: (value) => value.toFixed(2),
                     maxTicksLimit: 5,
                     padding: 8,
@@ -1048,7 +1018,7 @@ function getEnhancedChartOptions(timeframe, theme) {
                 },
                 border: {
                     display: true,
-                    color: theme.axisBorder,
+                    color: 'var(--axis-border)',
                     width: 2
                 },
                 min: 0,
@@ -1058,7 +1028,7 @@ function getEnhancedChartOptions(timeframe, theme) {
     };
 }
 
-// Chart Scroll Control
+// Chart Scroll Control - Reduced Sensitivity
 function initializeChartScroll() {
     const canvas = document.getElementById('mainChart');
     if (!canvas) return;
@@ -1075,7 +1045,7 @@ function initializeChartScroll() {
         const currentMin = xScale.min;
         const currentMax = xScale.max;
         const range = currentMax - currentMin;
-        const scrollSpeed = range * 0.1; // 10% scroll per wheel tick
+        const scrollSpeed = range * 0.03; // REDUCED sensitivity (from 0.1 to 0.03)
         
         if (event.deltaY > 0) {
             // Scroll right (forward in time)
@@ -1121,20 +1091,20 @@ function updateCurrentPriceLevel(price, direction) {
         currentPriceLevel.style.display = 'block';
         currentPriceLevel.style.top = `${pixel}px`;
         currentPriceLevel.style.left = `${chartArea.left}px`;
-        currentPriceLevel.style.width = `${chartArea.right - chartArea.left}px`;
+        currentPriceLevel.style.width = `${chartArea.right - chartArea.left}px`; // FIXED: Full width
         currentPriceLevel.style.height = '1px';
        
         // Set color based on direction
         if (direction === 'up') {
-            currentPriceLevel.style.backgroundColor = chartColors.bull;
+            currentPriceLevel.style.backgroundColor = 'var(--green)';
             currentPriceLevel.classList.add('bull');
             currentPriceLevel.classList.remove('bear', 'neutral');
         } else if (direction === 'down') {
-            currentPriceLevel.style.backgroundColor = chartColors.bear;
+            currentPriceLevel.style.backgroundColor = 'var(--red)';
             currentPriceLevel.classList.add('bear');
             currentPriceLevel.classList.remove('bull', 'neutral');
         } else {
-            currentPriceLevel.style.backgroundColor = chartColors.line;
+            currentPriceLevel.style.backgroundColor = 'var(--accent)';
             currentPriceLevel.classList.add('neutral');
             currentPriceLevel.classList.remove('bull', 'bear');
         }
@@ -1155,10 +1125,29 @@ function updateYAxisPriceBox(price, direction) {
         priceBox = document.createElement('div');
         priceBox.id = 'yAxisPriceBox';
         priceBox.className = 'y-axis-price-box';
+        priceBox.style.cssText = `
+            position: absolute;
+            right: 0;
+            padding: 2px 4px; /* Reduced padding */
+            border-radius: 3px 0 0 3px; /* Rounded left side only */
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem; /* Smaller font */
+            font-weight: 600;
+            z-index: 1000;
+            pointer-events: none;
+            border: 1px solid;
+            text-align: center;
+            min-width: 50px; /* Reduced width */
+            max-width: 60px; /* Maximum width */
+            overflow: hidden;
+            white-space: nowrap;
+        `;
         chartWrapper.appendChild(priceBox);
     }
    
-    priceBox.textContent = price.toFixed(5);
+    // Format price to fit in smaller box
+    const formattedPrice = parseFloat(price.toFixed(5)).toString();
+    priceBox.textContent = formattedPrice.length > 8 ? price.toFixed(4) : price.toFixed(5);
     priceBox.style.display = 'block';
    
     // Position on Y-axis
@@ -1166,31 +1155,29 @@ function updateYAxisPriceBox(price, direction) {
     const yScale = currentChart.scales.y;
     const pixel = yScale.getPixelForValue(price);
    
-    priceBox.style.top = `${pixel - 10}px`;
-    priceBox.style.right = '0px';
+    priceBox.style.top = `${pixel - 8}px`; /* Better vertical centering */
    
     // Set color based on direction
     if (direction === 'up') {
-        priceBox.style.backgroundColor = chartColors.bull;
-        priceBox.style.color = '#000';
+        priceBox.style.backgroundColor = 'var(--success-bg)';
+        priceBox.style.color = 'var(--green)';
+        priceBox.style.borderColor = 'var(--green-border)';
     } else if (direction === 'down') {
-        priceBox.style.backgroundColor = chartColors.bear;
-        priceBox.style.color = '#FFF';
+        priceBox.style.backgroundColor = 'var(--danger-bg)';
+        priceBox.style.color = 'var(--red)';
+        priceBox.style.borderColor = 'var(--red-border)';
     } else {
-        priceBox.style.backgroundColor = chartColors.line;
-        priceBox.style.color = '#FFF';
+        priceBox.style.backgroundColor = 'var(--accent-bg)';
+        priceBox.style.color = 'var(--accent)';
+        priceBox.style.borderColor = 'var(--accent)';
     }
 }
 
 // Enhanced Zoom System with Active State - FIXED
-let isZoomModeActive = false;
-let currentZoomMode = null;
-let currentZoomLevel = 2;
-
 function zoomIn() {
     if (!currentChart) return;
    
-    // Toggle active state
+    // Toggle drag-to-zoom mode
     if (isZoomModeActive && currentZoomMode === 'in') {
         // Deactivate
         isZoomModeActive = false;
@@ -1198,7 +1185,7 @@ function zoomIn() {
         currentChart.options.plugins.zoom.zoom.drag.enabled = false;
         updateZoomButtonState('reset');
     } else {
-        // Activate
+        // Activate drag-to-zoom
         isZoomModeActive = true;
         currentZoomMode = 'in';
         currentChart.options.plugins.zoom.zoom.drag.enabled = true;
@@ -1211,22 +1198,14 @@ function zoomIn() {
 function zoomOut() {
     if (!currentChart) return;
    
-    // Toggle active state
-    if (isZoomModeActive && currentZoomMode === 'out') {
-        // Deactivate
-        isZoomModeActive = false;
-        currentZoomMode = null;
-        currentChart.options.plugins.zoom.zoom.drag.enabled = false;
+    // ALWAYS one-click zoom out (no drag mode)
+    currentChart.zoom(0.8); // Zoom out 20% immediately
+    updateZoomButtonState('out');
+    
+    // Remove active state after click
+    setTimeout(() => {
         updateZoomButtonState('reset');
-    } else {
-        // Activate
-        isZoomModeActive = true;
-        currentZoomMode = 'out';
-        currentChart.options.plugins.zoom.zoom.drag.enabled = true;
-        updateZoomButtonState('out');
-    }
-   
-    currentChart.update('none');
+    }, 500);
 }
 
 function resetZoom() {
@@ -1234,7 +1213,6 @@ function resetZoom() {
    
     isZoomModeActive = false;
     currentZoomMode = null;
-    currentZoomLevel = 2;
     currentChart.resetZoom();
     currentChart.options.plugins.zoom.zoom.drag.enabled = false;
     currentChart.update('none');
@@ -1246,28 +1224,21 @@ function updateZoomButtonState(mode) {
     const zoomInBtn = document.querySelector('.control-btn');
     const zoomOutBtn = document.querySelectorAll('.control-btn')[2];
    
+    // Reset both first
+    if (zoomInBtn) zoomInBtn.classList.remove('active');
+    if (zoomOutBtn) zoomOutBtn.classList.remove('active');
+   
+    // Apply active state only to current mode
     if (mode === 'in') {
         if (zoomInBtn && zoomInBtn.textContent.includes('🔍+')) {
-            zoomInBtn.classList.add('active');
-        }
-        if (zoomOutBtn && zoomOutBtn.classList.contains('active')) {
-            zoomOutBtn.classList.remove('active');
+            zoomInBtn.classList.add('active'); // Blue background
         }
     } else if (mode === 'out') {
         if (zoomOutBtn && zoomOutBtn.textContent.includes('🔍-')) {
-            zoomOutBtn.classList.add('active');
-        }
-        if (zoomInBtn && zoomInBtn.classList.contains('active')) {
-            zoomInBtn.classList.remove('active');
-        }
-    } else if (mode === 'reset') {
-        if (zoomInBtn && zoomInBtn.classList.contains('active')) {
-            zoomInBtn.classList.remove('active');
-        }
-        if (zoomOutBtn && zoomOutBtn.classList.contains('active')) {
-            zoomOutBtn.classList.remove('active');
+            zoomOutBtn.classList.add('active'); // Blue background
         }
     }
+    // 'reset' mode leaves both inactive
 }
 
 // Enhanced Crosshair System with Fixed Display - FIXED
@@ -1285,7 +1256,21 @@ function initializeCrosshairDisplay() {
         crosshairDisplay = document.createElement('div');
         crosshairDisplay.id = 'crosshairDisplay';
         crosshairDisplay.className = 'crosshair-display';
-        crosshairDisplay.style.display = 'none';
+        crosshairDisplay.style.cssText = `
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 8px 12px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            z-index: 1000;
+            pointer-events: none;
+            display: none;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        `;
         chartWrapper.appendChild(crosshairDisplay);
     }
 }
@@ -1296,17 +1281,10 @@ function updateCrosshairDisplay(price, time) {
    
     if (price !== null && time) {
         crosshairDisplay.innerHTML = `
-            <div class="crosshair-price">${price.toFixed(5)}</div>
-            <div class="crosshair-time">${time}</div>
+            <div style="color: var(--text); font-weight: 600; margin-bottom: 2px;">${price.toFixed(5)}</div>
+            <div style="color: var(--gray); font-size: 0.7rem;">${time}</div>
         `;
         crosshairDisplay.style.display = 'block';
-       
-        // Position in top-left corner
-        const chartArea = currentChart?.chartArea;
-        if (chartArea) {
-            crosshairDisplay.style.top = `${chartArea.top + 10}px`;
-            crosshairDisplay.style.left = `${chartArea.left + 10}px`;
-        }
     } else {
         crosshairDisplay.style.display = 'none';
     }
@@ -1322,21 +1300,22 @@ function hideCrosshairDisplay() {
 function addCrosshairListeners() {
     const canvas = document.getElementById('mainChart');
     if (!canvas) return;
-   
+    
     canvas.addEventListener('mousemove', function(event) {
         if (tooltipLocked || !crosshairEnabled || !currentChart) return;
-       
+        
         const rect = canvas.getBoundingClientRect();
-        const x = event.clientX - rect.left;
-        const y = event.clientY - rect.top;
-       
+        crosshairX = event.clientX - rect.left;
+        crosshairY = event.clientY - rect.top;
+        crosshairVisible = true;
+        
         const chartArea = currentChart.chartArea;
         const yScale = currentChart.scales.y;
         const xScale = currentChart.scales.x;
-       
+        
         if (yScale && xScale && chartArea) {
-            const price = yScale.getValueForPixel(y);
-            const timeValue = xScale.getValueForPixel(x);
+            const price = yScale.getValueForPixel(crosshairY);
+            const timeValue = xScale.getValueForPixel(crosshairX);
             const timeText = timeValue ? new Date(timeValue).toLocaleString('en-US', {
                 month: 'short',
                 day: 'numeric',
@@ -1344,54 +1323,94 @@ function addCrosshairListeners() {
                 minute: '2-digit',
                 hour12: false
             }) : '';
-           
+            
             updateCrosshairDisplay(price, timeText);
             updateCurrentPrice(price);
         }
-       
+        
+        // REDRAW CHART TO SHOW CROSSHAIR LINES
         if (currentChart) currentChart.draw();
     });
-   
+    
     canvas.addEventListener('mouseleave', function() {
+        crosshairVisible = false;
         hideCrosshairDisplay();
         if (currentChart) currentChart.draw();
     });
-   
+    
+    // OVERRIDE CHART DRAW TO INCLUDE CROSSHAIR LINES
     if (currentChart) {
         const originalDraw = currentChart.draw;
         currentChart.draw = function() {
             originalDraw.call(this);
-            if (crosshairEnabled) drawCrosshair();
+            if (crosshairEnabled && crosshairVisible) {
+                drawCrosshair();
+            }
         };
     }
 }
 
 function drawCrosshair() {
     if (!crosshairEnabled || !crosshairVisible || !currentChart) return;
+    
     const ctx = currentChart.ctx;
     const chartArea = currentChart.chartArea;
-   
+    
+    // Keep crosshair within chart bounds
     const boundedX = Math.max(chartArea.left, Math.min(chartArea.right, crosshairX));
     const boundedY = Math.max(chartArea.top, Math.min(chartArea.bottom, crosshairY));
-   
-    if (boundedX < chartArea.left || boundedX > chartArea.right || boundedY < chartArea.top || boundedY > chartArea.bottom) return;
-   
+    
+    if (boundedX < chartArea.left || boundedX > chartArea.right || 
+        boundedY < chartArea.top || boundedY > chartArea.bottom) return;
+    
     ctx.save();
-    ctx.strokeStyle = '#E2E8F0';
+    
+    // VERTICAL LINE
+    ctx.strokeStyle = '#F59E0B'; // Orange color from your CSS
     ctx.lineWidth = 1;
     ctx.setLineDash([5, 5]);
-   
     ctx.beginPath();
     ctx.moveTo(boundedX, chartArea.top);
     ctx.lineTo(boundedX, chartArea.bottom);
     ctx.stroke();
-   
+    
+    // HORIZONTAL LINE  
     ctx.beginPath();
     ctx.moveTo(chartArea.left, boundedY);
     ctx.lineTo(chartArea.right, boundedY);
     ctx.stroke();
-   
+    
+    // CENTER DOT
+    ctx.fillStyle = '#F59E0B';
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.arc(boundedX, boundedY, 3, 0, 2 * Math.PI);
+    ctx.fill();
+    
     ctx.restore();
+}
+
+function toggleCrosshair() {
+    crosshairEnabled = !crosshairEnabled;
+    const crosshairBtn = document.querySelector('.control-btn');
+    
+    if (crosshairBtn && crosshairBtn.textContent.includes('Cross')) {
+        if (crosshairEnabled) {
+            crosshairBtn.innerHTML = '⊕ Cross ON';
+            crosshairBtn.classList.add('active');
+        } else {
+            crosshairBtn.innerHTML = '⊕ Cross OFF';
+            crosshairBtn.classList.remove('active');
+        }
+    }
+    
+    if (!crosshairEnabled) {
+        crosshairVisible = false;
+        hideCrosshairDisplay();
+    }
+    
+    // REDRAW CHART TO SHOW/HIDE CROSSHAIR
+    if (currentChart) currentChart.draw();
 }
 
 // Chart controls and utilities
@@ -1411,21 +1430,6 @@ function setChartType(type) {
 function updateChartTimeframe() {
     const timeframe = document.getElementById('timeframeSelect').value;
     loadChart(timeframe);
-}
-
-function toggleCrosshair() {
-    crosshairEnabled = !crosshairEnabled;
-    const crosshairBtn = document.querySelector('.control-btn');
-   
-    if (crosshairBtn && crosshairBtn.textContent.includes('Cross')) {
-        crosshairBtn.classList.toggle('active', crosshairEnabled);
-    }
-   
-    if (!crosshairEnabled) {
-        hideCrosshairDisplay();
-    }
-   
-    if (currentChart) currentChart.draw();
 }
 
 function downloadChart() {
@@ -1482,6 +1486,13 @@ function updateCurrentPrice(price) {
         updateCurrentPriceLevel(price, direction);
     }
 }
+
+// Remove Chart Shift System Completely
+function initializeChartShiftTriangle() {
+    // Chart shift system removed
+    console.log("🗑️ Chart shift system removed");
+}
+
 // ==================== INDICATORS MANAGEMENT ====================
 
 function initializeIndicatorsPanel() {

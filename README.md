@@ -683,6 +683,7 @@ function switchTab(tabName) {
     }
 }
 
+
 // ==================== CHART SYSTEM ====================
 
 // Chart rendering and datasets
@@ -726,7 +727,9 @@ function renderProfessionalChart(chartData, timeframe, symbol, indicators, indic
 
     initializeAxisIndicators();
     initializeCurrentPriceLine();
+    initializeChartShiftHandle();
     addCrosshairListeners();
+    setupFixedZoom();
     renderIndicatorsList();
     
     const latestPrice = chartData.length > 0 ? chartData[chartData.length - 1].y : 0;
@@ -947,18 +950,6 @@ function getEnhancedChartOptions(timeframe, theme) {
                         return label;
                     }
                 }
-            },
-            zoom: {
-                zoom: {
-                    wheel: { enabled: true, speed: 0.1 },
-                    pinch: { enabled: true },
-                    mode: 'xy',
-                    scaleMode: 'xy'
-                },
-                pan: {
-                    enabled: true,
-                    mode: 'xy'
-                }
             }
         },
         scales: {
@@ -989,7 +980,7 @@ function getEnhancedChartOptions(timeframe, theme) {
                 ticks: { 
                     color: theme.textSecondary,
                     callback: (value) => value.toFixed(5),
-                    maxTicksLimit: 10  // More ticks for better grid
+                    maxTicksLimit: 10
                 },
                 border: { display: false }
             },
@@ -998,7 +989,7 @@ function getEnhancedChartOptions(timeframe, theme) {
                 position: 'left',
                 grid: { drawOnChartArea: false },
                 ticks: { 
-                    color: '#E2E8F0', // Changed from orange to match crosshair
+                    color: '#E2E8F0',
                     callback: (value) => value.toFixed(2),
                     maxTicksLimit: 5
                 },
@@ -1015,11 +1006,9 @@ function initializeCurrentPriceLine() {
     const chartWrapper = document.querySelector('.chart-wrapper');
     if (!chartWrapper) return;
     
-    // Remove existing current price line if any
     const existingLine = document.getElementById('currentPriceLine');
     if (existingLine) existingLine.remove();
     
-    // Create current price line element
     const currentPriceLine = document.createElement('div');
     currentPriceLine.id = 'currentPriceLine';
     currentPriceLine.className = 'current-price-line';
@@ -1049,6 +1038,119 @@ function updateCurrentPriceLine(price, direction) {
     }
 }
 
+// Chart Shift Handle System
+let chartShiftHandle = null;
+let isDraggingShift = false;
+let chartShiftAmount = 0;
+const MAX_SHIFT_SPACE = 0.3; // 30% of chart width
+
+function initializeChartShiftHandle() {
+    const chartWrapper = document.querySelector('.chart-wrapper');
+    if (!chartWrapper) return;
+    
+    // Remove existing handle
+    const existingHandle = document.getElementById('chartShiftHandle');
+    if (existingHandle) existingHandle.remove();
+    
+    // Create shift handle
+    chartShiftHandle = document.createElement('div');
+    chartShiftHandle.id = 'chartShiftHandle';
+    chartShiftHandle.className = 'chart-shift-handle';
+    chartShiftHandle.innerHTML = '⫸';
+    
+    chartWrapper.appendChild(chartShiftHandle);
+    
+    // Add drag listeners
+    setupShiftHandleDrag();
+}
+
+function setupShiftHandleDrag() {
+    if (!chartShiftHandle) return;
+    
+    chartShiftHandle.addEventListener('mousedown', startShiftDrag);
+    document.addEventListener('mousemove', handleShiftDrag);
+    document.addEventListener('mouseup', stopShiftDrag);
+    
+    chartShiftHandle.addEventListener('touchstart', startShiftDrag);
+    document.addEventListener('touchmove', handleShiftDrag);
+    document.addEventListener('touchend', stopShiftDrag);
+}
+
+function startShiftDrag(e) {
+    e.preventDefault();
+    isDraggingShift = true;
+    chartShiftHandle.classList.add('dragging');
+}
+
+function handleShiftDrag(e) {
+    if (!isDraggingShift || !currentChart) return;
+    
+    const chartWrapper = document.querySelector('.chart-wrapper');
+    const rect = chartWrapper.getBoundingClientRect();
+    const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+    
+    if (!clientX) return;
+    
+    // Calculate shift amount (0 to MAX_SHIFT_SPACE)
+    const relativeX = (clientX - rect.left) / rect.width;
+    chartShiftAmount = Math.max(0, Math.min(MAX_SHIFT_SPACE, 1 - relativeX));
+    
+    updateChartShift();
+}
+
+function stopShiftDrag() {
+    isDraggingShift = false;
+    if (chartShiftHandle) {
+        chartShiftHandle.classList.remove('dragging');
+    }
+}
+
+function updateChartShift() {
+    if (!currentChart) return;
+    
+    // Update chart appearance based on shift amount
+    const chartArea = currentChart.chartArea;
+    if (chartArea && chartShiftHandle) {
+        const handleX = chartArea.right - (chartArea.right - chartArea.left) * chartShiftAmount;
+        chartShiftHandle.style.left = `${handleX}px`;
+        chartShiftHandle.style.display = 'block';
+    }
+}
+
+// Fixed Zoom System
+let currentZoomLevel = 0;
+const ZOOM_LEVELS = [0.5, 0.7, 1, 1.5, 2, 3, 5]; // Fixed zoom multipliers
+
+function setupFixedZoom() {
+    const canvas = document.getElementById('mainChart');
+    if (!canvas) return;
+    
+    canvas.addEventListener('wheel', handleFixedZoom, { passive: false });
+}
+
+function handleFixedZoom(e) {
+    if (!currentChart) return;
+    
+    e.preventDefault();
+    
+    if (e.deltaY < 0) {
+        // Zoom in
+        currentZoomLevel = Math.min(ZOOM_LEVELS.length - 1, currentZoomLevel + 1);
+    } else {
+        // Zoom out
+        currentZoomLevel = Math.max(0, currentZoomLevel - 1);
+    }
+    
+    applyFixedZoom();
+}
+
+function applyFixedZoom() {
+    if (!currentChart) return;
+    
+    const zoomMultiplier = ZOOM_LEVELS[currentZoomLevel];
+    currentChart.zoom(zoomMultiplier);
+}
+
 // Enhanced Crosshair System
 function initializeAxisIndicators() {
     if (axisIndicators.yIndicator) axisIndicators.yIndicator.remove();
@@ -1057,13 +1159,11 @@ function initializeAxisIndicators() {
     const chartWrapper = document.querySelector('.chart-wrapper');
     if (!chartWrapper) return;
     
-    // Y-axis price indicator
     const yIndicator = document.createElement('div');
     yIndicator.className = 'axis-indicator y-axis-indicator';
     yIndicator.id = 'yAxisIndicator';
     yIndicator.style.display = 'none';
     
-    // X-axis time indicator
     const xIndicator = document.createElement('div');
     xIndicator.className = 'axis-indicator x-axis-indicator';
     xIndicator.id = 'xAxisIndicator';
@@ -1082,7 +1182,6 @@ function updateAxisIndicators(x, y, price, time) {
     const chartArea = currentChart?.chartArea;
     if (!chartArea) return;
     
-    // Update Y-axis price indicator
     if (price !== null && y >= chartArea.top && y <= chartArea.bottom) {
         axisIndicators.yIndicator.textContent = price.toFixed(5);
         axisIndicators.yIndicator.style.top = `${y}px`;
@@ -1092,7 +1191,6 @@ function updateAxisIndicators(x, y, price, time) {
         axisIndicators.yIndicator.style.display = 'none';
     }
     
-    // Update X-axis time indicator
     if (time && x >= chartArea.left && x <= chartArea.right) {
         axisIndicators.xIndicator.textContent = time;
         axisIndicators.xIndicator.style.left = `${x}px`;
@@ -1178,24 +1276,20 @@ function drawCrosshair() {
     if (crosshairX < chartArea.left || crosshairX > chartArea.right || crosshairY < chartArea.top || crosshairY > chartArea.bottom) return;
 
     ctx.save();
-    // Changed from orange to standard crosshair color (light gray)
     ctx.strokeStyle = '#E2E8F0';
     ctx.lineWidth = 1;
     ctx.setLineDash([5, 5]);
     
-    // Vertical line only
     ctx.beginPath();
     ctx.moveTo(crosshairX, chartArea.top);
     ctx.lineTo(crosshairX, chartArea.bottom);
     ctx.stroke();
     
-    // Horizontal line only  
     ctx.beginPath();
     ctx.moveTo(chartArea.left, crosshairY);
     ctx.lineTo(chartArea.right, crosshairY);
     ctx.stroke();
     
-    // REMOVED THE DOT COMPLETELY - clean professional look
     ctx.restore();
 }
 
@@ -1268,24 +1362,6 @@ function downloadChart() {
     link.click();
 }
 
-function zoomIn() {
-    if (currentChart) {
-        currentChart.zoom(1.2);
-    }
-}
-
-function zoomOut() {
-    if (currentChart) {
-        currentChart.zoom(0.8);
-    }
-}
-
-function resetZoom() {
-    if (currentChart) {
-        currentChart.resetZoom();
-    }
-}
-
 // Chart time utilities
 function getProfessionalTimeUnit(timeframe) {
     const units = {
@@ -1302,6 +1378,7 @@ function getProfessionalTimeFormats(timeframe) {
         day: 'MMM dd, yyyy'
     };
 }
+
 // ==================== INDICATORS MANAGEMENT ====================
 
 function initializeIndicatorsPanel() {
@@ -1721,5 +1798,4 @@ window.zoomIn = zoomIn;
 window.zoomOut = zoomOut;
 window.resetZoom = resetZoom;
 window.addIndicatorFromDropdown = addIndicatorFromDropdown;
-
 console.log("🚀 MEGA FLOWZ Dashboard Script Loaded Successfully!");

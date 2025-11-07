@@ -392,22 +392,6 @@ body {
   border-radius: 6px;
   border: 1px solid var(--green-border);
   white-space: nowrap;
-  transition: all 0.2s ease;
-}
-.current-price.up {
-  background: var(--success-bg);
-  border-color: var(--green-border);
-  color: var(--green);
-}
-.current-price.down {
-  background: var(--danger-bg);
-  border-color: var(--red-border);
-  color: var(--red);
-}
-.current-price.neutral {
-  background: var(--accent-bg);
-  border-color: var(--accent);
-  color: var(--accent);
 }
 .chart-status {
   margin-left: auto;
@@ -655,59 +639,245 @@ body {
   height: 100%;
   z-index: 1;
 }
+.axis-indicator {
+  position: absolute;
+  pointer-events: none;
+  z-index: 1002;
+  background: rgba(15, 23, 42, 0.95);
+  color: #E2E8F0;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  border: 1px solid #E2E8F0;
+  white-space: nowrap;
+}
+.y-axis-indicator {
+  right: 10px;
+  transform: translateY(-50%);
+}
+.x-axis-indicator {
+  bottom: 10px;
+  transform: translateX(-50%);
+}
+/* ==================== NEW CSS FOR JAVASCRIPT FEATURES ==================== */
+/* Live Icon & Reloading States */
+.live-icon {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  font-size: 1.2rem;
+  transition: all 0.3s ease;
+  z-index: 100;
+}
+.live-icon.pulsing {
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+.reloading-sign {
+  position: absolute;
+  top: 20px;
+  right: 60px;
+  background: var(--accent-bg);
+  color: var(--accent);
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  border: 1px solid var(--accent);
+  z-index: 100;
+}
+/* Pyramid Block Metrics & Progress Indicators */
+.block-metrics {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  margin-right: 12px;
+}
+.pips-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  color: var(--gray);
+  font-weight: 500;
+}
+.progress-indicator {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.65rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  font-weight: 500;
+}
+.progress-indicator.complete {
+  background: var(--success-bg);
+  color: var(--green);
+  border-color: var(--green-border);
+}
+.progress-indicator.partial {
+  background: var(--accent-bg);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.progress-indicator:not(.complete):not(.partial) {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--gray);
+}
+/* Crosshair Visual Styles */
+.crosshair-line {
+  position: absolute;
+  background: #F59E0B;
+  pointer-events: none;
+  z-index: 100;
+}
+.crosshair-vertical {
+  width: 1px;
+  height: 100%;
+  top: 0;
+}
+.crosshair-horizontal {
+  height: 1px;
+  width: 100%;
+  left: 0;
+}
+.crosshair-dot {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: #F59E0B;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 101;
+}
+/* Tooltip Locking Interface */
+.tooltip-locked {
+  border: 2px solid #F59E0B !important;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.3) !important;
+}
+.lock-indicator {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  background: #F59E0B;
+  color: #000;
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-size: 0.6rem;
+  font-weight: bold;
+}
+/* Enhanced Chart Type Visuals */
+.candlestick-up {
+  background: var(--success-bg);
+  border-color: var(--green-border);
+}
+.candlestick-down {
+  background: var(--danger-bg);
+  border-color: var(--red-border);
+}
+/* Trend Line Colors */
+.trend-bull {
+  border-color: var(--green-border) !important;
+}
+.trend-bear {
+  border-color: var(--red-border) !important;
+}
+/* Keyboard Shortcuts Indicator */
+.shortcuts-help {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 0.75rem;
+  color: var(--gray);
+  z-index: 1000;
+  display: none;
+  max-width: 300px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+.shortcuts-help.visible {
+  display: block;
+}
+.shortcut-item {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
+  align-items: center;
+}
+.shortcut-key {
+  background: var(--bg);
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  font-family: 'JetBrains Mono', monospace;
+  margin-left: 8px;
+  font-size: 0.7rem;
+  min-width: 60px;
+  text-align: center;
+}
+/* Enhanced Loading States */
+.polling-status {
+  position: fixed;
+  bottom: 10px;
+  left: 10px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 0.7rem;
+  color: var(--gray);
+  z-index: 1000;
+  font-family: 'JetBrains Mono', monospace;
+}
+.polling-status.active {
+  border-color: var(--green-border);
+  color: var(--green);
+  background: var(--success-bg);
+}
+.polling-status.normal {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-bg);
+}
+/* Status Indicator */
+.status-indicator {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+}
+.status-indicator.active {
+  background: var(--green);
+  animation: blink 2s infinite;
+}
+.status-indicator.normal {
+  background: var(--accent);
+}
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0.3; }
+}
 
 /* ==================== CHART SYSTEM ENHANCEMENTS ==================== */
-/* Current Price Line with Dashed Pattern */
+/* Current Price Line */
 .current-price-line {
     position: absolute;
     height: 1px;
     pointer-events: none;
     z-index: 1000;
-    opacity: 0.8;
+    opacity: 0.7;
     transition: top 0.1s ease;
-    display: none;
-}
-
-.current-price-line.up {
-    background: repeating-linear-gradient(
-        90deg,
-        var(--green) 0px,
-        var(--green) 2px,
-        transparent 2px,
-        transparent 4px,
-        var(--green) 4px,
-        var(--green) 8px,
-        transparent 8px,
-        transparent 12px
-    );
-}
-
-.current-price-line.down {
-    background: repeating-linear-gradient(
-        90deg,
-        var(--red) 0px,
-        var(--red) 2px,
-        transparent 2px,
-        transparent 4px,
-        var(--red) 4px,
-        var(--red) 8px,
-        transparent 8px,
-        transparent 12px
-    );
-}
-
-.current-price-line.neutral {
-    background: repeating-linear-gradient(
-        90deg,
-        var(--accent) 0px,
-        var(--accent) 2px,
-        transparent 2px,
-        transparent 4px,
-        var(--accent) 4px,
-        var(--accent) 8px,
-        transparent 8px,
-        transparent 12px
-    );
 }
 
 /* MT5 Style Chart Shift Triangle */
@@ -744,10 +914,10 @@ body {
     position: fixed;
     background: rgba(15, 23, 42, 0.95);
     color: #E2E8F0;
-    padding: 6px 10px;
-    border-radius: 4px;
+    padding: 8px 12px;
+    border-radius: 6px;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.7rem;
+    font-size: 0.75rem;
     border: 1px solid #E2E8F0;
     z-index: 1003;
     pointer-events: none;
@@ -755,391 +925,161 @@ body {
     white-space: nowrap;
     text-align: center;
     line-height: 1.3;
-    max-width: 120px;
 }
 
-/* Compact Axis Indicators */
+/* Axis Indicators */
 .axis-indicator {
     background: rgba(15, 23, 42, 0.95);
     color: #E2E8F0;
     border: 1px solid #E2E8F0;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.7rem;
-    padding: 3px 6px;
-    border-radius: 3px;
+    font-size: 0.75rem;
+    padding: 4px 8px;
+    border-radius: 4px;
     pointer-events: none;
     z-index: 1002;
     white-space: nowrap;
-    max-width: 80px;
-    text-align: center;
-}
-
-.y-axis-indicator {
-    right: 5px;
-    transform: translateY(-50%);
-}
-
-.x-axis-indicator {
-    bottom: 5px;
-    transform: translateX(-50%);
-}
-
-/* ==================== NEW CSS FOR JAVASCRIPT FEATURES ==================== */
-/* Live Icon & Reloading States */
-.live-icon {
-    position: absolute;
-    top: 20px;
-    right: 20px;
-    font-size: 1.2rem;
-    transition: all 0.3s ease;
-    z-index: 100;
-}
-.live-icon.pulsing {
-    animation: pulse 2s infinite;
-}
-@keyframes pulse {
-    0% { opacity: 1; }
-    50% { opacity: 0.5; }
-    100% { opacity: 1; }
-}
-.reloading-sign {
-    position: absolute;
-    top: 20px;
-    right: 60px;
-    background: var(--accent-bg);
-    color: var(--accent);
-    padding: 6px 12px;
-    border-radius: 6px;
-    font-size: 0.8rem;
-    font-weight: 500;
-    border: 1px solid var(--accent);
-    z-index: 100;
-}
-/* Pyramid Block Metrics & Progress Indicators */
-.block-metrics {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-left: auto;
-    margin-right: 12px;
-}
-.pips-value {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.7rem;
-    background: rgba(255, 255, 255, 0.08);
-    padding: 2px 6px;
-    border-radius: 4px;
-    border: 1px solid var(--border);
-    color: var(--gray);
-    font-weight: 500;
-}
-.progress-indicator {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.65rem;
-    padding: 2px 6px;
-    border-radius: 4px;
-    border: 1px solid var(--border);
-    font-weight: 500;
-}
-.progress-indicator.complete {
-    background: var(--success-bg);
-    color: var(--green);
-    border-color: var(--green-border);
-}
-.progress-indicator.partial {
-    background: var(--accent-bg);
-    color: var(--accent);
-    border-color: var(--accent);
-}
-.progress-indicator:not(.complete):not(.partial) {
-    background: rgba(255, 255, 255, 0.05);
-    color: var(--gray);
-}
-/* Crosshair Visual Styles */
-.crosshair-line {
-    position: absolute;
-    background: #F59E0B;
-    pointer-events: none;
-    z-index: 100;
-}
-.crosshair-vertical {
-    width: 1px;
-    height: 100%;
-    top: 0;
-}
-.crosshair-horizontal {
-    height: 1px;
-    width: 100%;
-    left: 0;
-}
-.crosshair-dot {
-    position: absolute;
-    width: 8px;
-    height: 8px;
-    background: #F59E0B;
-    border-radius: 50%;
-    pointer-events: none;
-    z-index: 101;
-}
-/* Tooltip Locking Interface */
-.tooltip-locked {
-    border: 2px solid #F59E0B !important;
-    box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.3) !important;
-}
-.lock-indicator {
-    position: absolute;
-    top: 5px;
-    right: 5px;
-    background: #F59E0B;
-    color: #000;
-    padding: 2px 4px;
-    border-radius: 3px;
-    font-size: 0.6rem;
-    font-weight: bold;
-}
-/* Enhanced Chart Type Visuals */
-.candlestick-up {
-    background: var(--success-bg);
-    border-color: var(--green-border);
-}
-.candlestick-down {
-    background: var(--danger-bg);
-    border-color: var(--red-border);
-}
-/* Trend Line Colors */
-.trend-bull {
-    border-color: var(--green-border) !important;
-}
-.trend-bear {
-    border-color: var(--red-border) !important;
-}
-/* Keyboard Shortcuts Indicator */
-.shortcuts-help {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 12px;
-    font-size: 0.75rem;
-    color: var(--gray);
-    z-index: 1000;
-    display: none;
-    max-width: 300px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-}
-.shortcuts-help.visible {
-    display: block;
-}
-.shortcut-item {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 4px;
-    align-items: center;
-}
-.shortcut-key {
-    background: var(--bg);
-    padding: 2px 6px;
-    border-radius: 4px;
-    border: 1px solid var(--border);
-    font-family: 'JetBrains Mono', monospace;
-    margin-left: 8px;
-    font-size: 0.7rem;
-    min-width: 60px;
-    text-align: center;
-}
-/* Enhanced Loading States */
-.polling-status {
-    position: fixed;
-    bottom: 10px;
-    left: 10px;
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 6px 10px;
-    font-size: 0.7rem;
-    color: var(--gray);
-    z-index: 1000;
-    font-family: 'JetBrains Mono', monospace;
-}
-.polling-status.active {
-    border-color: var(--green-border);
-    color: var(--green);
-    background: var(--success-bg);
-}
-.polling-status.normal {
-    border-color: var(--accent);
-    color: var(--accent);
-    background: var(--accent-bg);
-}
-/* Status Indicator */
-.status-indicator {
-    display: inline-block;
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    margin-right: 6px;
-}
-.status-indicator.active {
-    background: var(--green);
-    animation: blink 2s infinite;
-}
-.status-indicator.normal {
-    background: var(--accent);
-}
-@keyframes blink {
-    0%, 50% { opacity: 1; }
-    51%, 100% { opacity: 0.3; }
 }
 
 /* ==================== RESPONSIVE DESIGN ==================== */
 @media (max-width: 768px) {
-    .header {
-        margin: 10px;
-        padding: 16px;
-    }
-   
-    .header h1 {
-        font-size: 1.5rem;
-    }
-   
-    .style-controls {
-        flex-direction: column;
-        gap: 6px;
-    }
-   
-    .style-dropdown {
-        min-width: 160px;
-    }
-   
-    .tabs-header {
-        padding: 0 8px;
-    }
-   
-    .tab {
-        padding: 10px 14px;
-        font-size: 0.75rem;
-    }
-   
-    .chart-controls {
-        gap: 6px;
-        padding: 12px;
-    }
-   
-    .timeframe-select, .chart-type-select, .control-btn {
-        padding: 6px 10px;
-        font-size: 0.75rem;
-        min-width: auto;
-    }
-   
-    .chart-type-section {
-        flex-direction: column;
-        gap: 6px;
-    }
-   
-    .color-pickers {
-        justify-content: center;
-    }
-   
-    .chart-area {
-        flex-direction: column;
-    }
-   
-    .indicators-panel {
-        width: 100%;
-        height: 250px;
-    }
-   
-    .indicators-panel.collapsed {
-        width: 100%;
-        height: 50px;
-    }
-   
-    .children {
-        margin-left: 12px;
-        padding-left: 10px;
-    }
-   
-    .block-metrics {
-        flex-direction: column;
-        gap: 4px;
-        margin-left: 0;
-        margin-right: 0;
-    }
-   
-    .live-icon, .reloading-sign {
-        position: relative;
-        top: auto;
-        right: auto;
-        margin: 4px 0;
-    }
-   
-    .shortcuts-help {
-        bottom: 10px;
-        right: 10px;
-        left: 10px;
-        max-width: none;
-    }
-   
-    .polling-status {
-        bottom: 5px;
-        left: 5px;
-        font-size: 0.65rem;
-        padding: 4px 8px;
-    }
+  .header {
+    margin: 10px;
+    padding: 16px;
+  }
+ 
+  .header h1 {
+    font-size: 1.5rem;
+  }
+ 
+  .style-controls {
+    flex-direction: column;
+    gap: 6px;
+  }
+ 
+  .style-dropdown {
+    min-width: 160px;
+  }
+ 
+  .tabs-header {
+    padding: 0 8px;
+  }
+ 
+  .tab {
+    padding: 10px 14px;
+    font-size: 0.75rem;
+  }
+ 
+  .chart-controls {
+    gap: 6px;
+    padding: 12px;
+  }
+ 
+  .timeframe-select, .chart-type-select, .control-btn {
+    padding: 6px 10px;
+    font-size: 0.75rem;
+    min-width: auto;
+  }
+ 
+  .chart-type-section {
+    flex-direction: column;
+    gap: 6px;
+  }
+ 
+  .color-pickers {
+    justify-content: center;
+  }
+ 
+  .chart-area {
+    flex-direction: column;
+  }
+ 
+  .indicators-panel {
+    width: 100%;
+    height: 250px;
+  }
+ 
+  .indicators-panel.collapsed {
+    width: 100%;
+    height: 50px;
+  }
+ 
+  .children {
+    margin-left: 12px;
+    padding-left: 10px;
+  }
+  /* Responsive updates for new elements */
+  .block-metrics {
+    flex-direction: column;
+    gap: 4px;
+    margin-left: 0;
+    margin-right: 0;
+  }
+ 
+  .live-icon, .reloading-sign {
+    position: relative;
+    top: auto;
+    right: auto;
+    margin: 4px 0;
+  }
+ 
+  .shortcuts-help {
+    bottom: 10px;
+    right: 10px;
+    left: 10px;
+    max-width: none;
+  }
+ 
+  .polling-status {
+    bottom: 5px;
+    left: 5px;
+    font-size: 0.65rem;
+    padding: 4px 8px;
+  }
 
-    .chart-shift-triangle {
-        width: 10px;
-        height: 10px;
-        font-size: 7px;
-    }
-
-    .axis-indicator {
-        font-size: 0.65rem;
-        padding: 2px 4px;
-        max-width: 70px;
-    }
+  .chart-shift-triangle {
+    width: 10px;
+    height: 10px;
+    font-size: 7px;
+  }
 }
-
 /* Dropdown Styling */
 select, option {
-    background-color: var(--card) !important;
-    color: var(--text) !important;
-    border-color: var(--border) !important;
+  background-color: var(--card) !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
 }
 select:focus {
-    outline: none;
-    border-color: var(--accent) !important;
-    box-shadow: 0 0 0 2px rgba(58, 134, 255, 0.1) !important;
+  outline: none;
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 2px rgba(58, 134, 255, 0.1) !important;
 }
-
 /* Scrollbar Styling */
 .indicators-list::-webkit-scrollbar {
-    width: 4px;
+  width: 4px;
 }
 .indicators-list::-webkit-scrollbar-track {
-    background: var(--bg);
-    border-radius: 2px;
+  background: var(--bg);
+  border-radius: 2px;
 }
 .indicators-list::-webkit-scrollbar-thumb {
-    background: var(--border);
-    border-radius: 2px;
+  background: var(--border);
+  border-radius: 2px;
 }
 .indicators-list::-webkit-scrollbar-thumb:hover {
-    background: var(--accent);
+  background: var(--accent);
 }
-
+/* Additional scrollbar styling for other elements */
 .tab-content::-webkit-scrollbar {
-    width: 6px;
+  width: 6px;
 }
 .tab-content::-webkit-scrollbar-track {
-    background: var(--bg);
+  background: var(--bg);
 }
 .tab-content::-webkit-scrollbar-thumb {
-    background: var(--border);
-    border-radius: 3px;
+  background: var(--border);
+  border-radius: 3px;
 }
 .tab-content::-webkit-scrollbar-thumb:hover {
-    background: var(--accent);
+  background: var(--accent);
 }

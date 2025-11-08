@@ -1,1201 +1,525 @@
-/* ===============================================================
-   📊🔔 ANALYSIS & ALERTS STYLES - PROFESSIONAL GAUGE VERSION
-   =============================================================== */
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>🧠 MEGA FLOWZ - Professional Trading Dashboard</title>
+  
+  <!-- Google Fonts for Professional Typography -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <!-- Local Styles -->
+  <link rel="stylesheet" href="pyramid_chart.css">
+  <link rel="stylesheet" href="analysis_alerts.css">
+</head>
+<body>
+  <div class="tabs-container">
+    <div class="tabs-header">
+      <button class="tab active" onclick="switchTab('pyramid')">🏔️ Pyramid</button>
+      <button class="tab" onclick="switchTab('chart')">📈 Chart</button>
+      <button class="tab" onclick="switchTab('analysis')">📊 Analysis</button>
+      <button class="tab" onclick="switchTab('alerts')">🔔 Alerts</button>
+    </div>
 
-/* ==================== PROFESSIONAL SPEEDOMETER GAUGES ==================== */
-.gauges-container {
-    background: var(--card);
-    border-radius: 12px;
-    padding: 20px;
-    margin: 16px;
-    border: 1px solid var(--border);
-}
+    <div id="pyramid-tab" class="tab-content active">
+      <div class="header">
+        <h1>🧠 MEGA FLOWZ - Professional Trading Dashboard</h1>
+        
+        <!-- Pyramid Controls -->
+        <div class="pyramid-style-selector">
+          <div class="style-controls">
+            <!-- Pairs Dropdown - EUR/USD as default -->
+            <select id="pairsSelect" class="style-dropdown" onchange="changePair(this.value)">
+              <!-- Forex Major Pairs -->
+              <option value="EUR/USD">💶 EUR/USD</option>
+              <option value="GBP/USD">💷 GBP/USD</option>
+              <option value="USD/JPY">💴 USD/JPY</option>
+              <option value="USD/CHF">🇨🇭 USD/CHF</option>
+              <option value="AUD/USD">🇦🇺 AUD/USD</option>
+              <option value="USD/CAD">🇨🇦 USD/CAD</option>
+              <option value="NZD/USD">🇳🇿 NZD/USD</option>
+              
+              <!-- Forex Minor Pairs -->
+              <option value="EUR/GBP">💶/💷 EUR/GBP</option>
+              <option value="EUR/JPY">💶/💴 EUR/JPY</option>
+              <option value="GBP/JPY">💷/💴 GBP/JPY</option>
+              <option value="EUR/CAD">💶/🇨🇦 EUR/CAD</option>
+              <option value="AUD/JPY">🇦🇺/💴 AUD/JPY</option>
+              
+              <!-- Cryptocurrencies -->
+              <option value="BTC/USD">₿ Bitcoin/USD</option>
+              <option value="ETH/USD">🔷 Ethereum/USD</option>
+              <option value="ADA/USD">🟥 Cardano/USD</option>
+              <option value="SOL/USD">🟦 Solana/USD</option>
+              <option value="XRP/USD">⚡ Ripple/USD</option>
+              <option value="DOT/USD">🔴 Polkadot/USD</option>
+              <option value="DOGE/USD">🐶 Dogecoin/USD</option>
+              <option value="LTC/USD">🔶 Litecoin/USD</option>
+              <option value="BNB/USD">💎 Binance Coin/USD</option>
+              <option value="MATIC/USD">🔷 Polygon/USD</option>
+              
+              <!-- Commodities -->
+              <option value="XAU/USD">🥇 Gold/USD</option>
+              <option value="XAG/USD">🥈 Silver/USD</option>
+              <option value="XPT/USD">🔧 Platinum/USD</option>
+              <option value="XPD/USD">⚡ Palladium/USD</option>
+              
+              <!-- Indices -->
+              <option value="US30">🇺🇸 Dow Jones</option>
+              <option value="SPX500">🇺🇸 S&P 500</option>
+              <option value="NAS100">🇺🇸 NASDAQ</option>
+              <option value="GER40">🇩🇪 DAX 40</option>
+              <option value="UK100">🇬🇧 FTSE 100</option>
+              <option value="JP225">🇯🇵 Nikkei 225</option>
+            </select>
+            
+            <!-- Pyramid Style Dropdown -->
+            <select id="pyramidStyleSelect" class="style-dropdown" onchange="changePyramidStyle(this.value)">
+              <option value="scalper">⚡ Scalper (M15→M5→M1)</option>
+              <option value="intraday">📈 Intraday (H1→M15→M5→M1)</option>
+              <option value="swing">🔄 Swing (H4→H1→M15→M5→M1)</option>
+              <option value="daily" selected>📅 Daily (D1→H4→H1→M15→M5→M1)</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="info" id="status">🔄 Loading market data...</div>
+      </div>
+      
+      <div class="controls">
+        <button class="size-btn" onclick="setPyramidSize('small')">📱 Compact</button>
+        <button class="size-btn active" onclick="setPyramidSize('medium')">📊 Standard</button>
+        <button class="size-btn" onclick="setPyramidSize('large')">🖥️ Detailed</button>
+      </div>
+      
+      <div class="update-info" id="updateInfo"></div>
+      <div class="pyramid medium" id="pyramid"></div>
+    </div>
 
-.gauge-row {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 20px;
-    align-items: end;
-}
-
-.gauge-item {
-    text-align: center;
-}
-
-.gauge-title {
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: var(--text);
-    margin-bottom: 15px;
-    text-transform: uppercase;
-}
-
-/* Professional Gauge Container */
-.gauge-container {
-    position: relative;
-    width: 140px;
-    height: 120px;
-    margin: 0 auto;
-}
-
-/* Gauge Arc */
-.gauge-arc {
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    border-radius: 50%;
-    background: conic-gradient(from -135deg, 
-        rgba(255, 255, 255, 0.1) 0%, 
-        rgba(255, 255, 255, 0.1) 100%);
-    overflow: hidden;
-}
-
-.gauge-arc-fill {
-    width: 100%;
-    height: 100%;
-    border-radius: 50%;
-    transition: background 0.8s ease-out;
-}
-
-/* Center Hub */
-.gauge-hub {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 12px;
-    height: 12px;
-    background: #1f2937;
-    border: 2px solid #374151;
-    border-radius: 50%;
-    transform: translate(-50%, -50%);
-    z-index: 2;
-}
-
-/* Needle Container */
-.gauge-needle-container {
-    position: absolute;
-    top: 0;
-    left: 50%;
-    width: 100%;
-    height: 100%;
-}
-
-.gauge-needle {
-    position: absolute;
-    top: 10%;
-    left: 50%;
-    width: 2px;
-    height: 45%;
-    background: #f8fafc;
-    transform-origin: 50% 100%;
-    transform: translateX(-50%) rotate(-135deg);
-    z-index: 1;
-    transition: transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.needle-head {
-    position: absolute;
-    top: 0;
-    left: 50%;
-    width: 8px;
-    height: 8px;
-    background: #ef4444;
-    border-radius: 50%;
-    transform: translateX(-50%);
-}
-
-/* Value Display */
-.gauge-value-container {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, 20%);
-    text-align: center;
-    z-index: 3;
-}
-
-.gauge-score {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 1.3rem;
-    font-weight: 700;
-    color: var(--text);
-    line-height: 1;
-}
-
-.gauge-unit {
-    font-size: 0.7rem;
-    color: var(--gray);
-    margin-top: 2px;
-}
-
-/* Label Container */
-.gauge-label-container {
-    position: absolute;
-    bottom: -5px;
-    left: 0;
-    right: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    z-index: 3;
-}
-
-.gauge-label {
-    font-size: 0.75rem;
-    font-weight: 600;
-    padding: 4px 8px;
-    border-radius: 8px;
-    transition: all 0.3s ease;
-    min-width: 80px;
-}
-
-.gauge-indicator-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    transition: all 0.3s ease;
-}
-
-/* Threshold Markers */
-.gauge-markers {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    pointer-events: none;
-}
-
-.marker {
-    position: absolute;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.6rem;
-    color: var(--gray);
-    font-weight: 500;
-    transform: translateX(-50%);
-}
-
-.marker-0 {
-    bottom: 5px;
-    left: 10%;
-}
-
-.marker-25 {
-    bottom: 20px;
-    left: 25%;
-}
-
-.marker-50 {
-    bottom: 30px;
-    left: 50%;
-    transform: translateX(-50%);
-}
-
-.marker-75 {
-    bottom: 20px;
-    left: 75%;
-}
-
-.marker-100 {
-    bottom: 5px;
-    left: 90%;
-}
-
-/* Gauge Label Colors */
-.gauge-label.bullish { 
-    background: rgba(0, 211, 148, 0.15); 
-    color: #00D394; 
-    border: 1px solid rgba(0, 211, 148, 0.3); 
-}
-.gauge-label.bearish { 
-    background: rgba(255, 77, 77, 0.15); 
-    color: #FF4D4D; 
-    border: 1px solid rgba(255, 77, 77, 0.3); 
-}
-.gauge-label.neutral { 
-    background: rgba(148, 163, 184, 0.15); 
-    color: #94A3B8; 
-    border: 1px solid rgba(148, 163, 184, 0.3); 
-}
-
-.gauge-label.strong { 
-    background: rgba(0, 211, 148, 0.15); 
-    color: #00D394; 
-    border: 1px solid rgba(0, 211, 148, 0.3); 
-}
-.gauge-label.weak { 
-    background: rgba(255, 77, 77, 0.15); 
-    color: #FF4D4D; 
-    border: 1px solid rgba(255, 77, 77, 0.3); 
-}
-.gauge-label.moderate { 
-    background: rgba(255, 170, 0, 0.15); 
-    color: #FFAA00; 
-    border: 1px solid rgba(255, 170, 0, 0.3); 
-}
-
-.gauge-label.high { 
-    background: rgba(255, 77, 77, 0.15); 
-    color: #FF4D4D; 
-    border: 1px solid rgba(255, 77, 77, 0.3); 
-}
-.gauge-label.low { 
-    background: rgba(0, 211, 148, 0.15); 
-    color: #00D394; 
-    border: 1px solid rgba(0, 211, 148, 0.3); 
-}
-.gauge-label.medium { 
-    background: rgba(255, 170, 0, 0.15); 
-    color: #FFAA00; 
-    border: 1px solid rgba(255, 170, 0, 0.3); 
-}
-
-/* Responsive Gauges */
-@media (max-width: 1200px) {
-    .gauge-row {
-        grid-template-columns: repeat(2, 1fr);
-    }
-}
-
-@media (max-width: 768px) {
-    .gauge-row {
-        grid-template-columns: 1fr;
-    }
+    <div id="chart-tab" class="tab-content">
+      <div class="chart-container">
+        <div class="chart-controls">
+          <!-- Timeframe Selection -->
+          <select id="timeframeSelect" class="timeframe-select" onchange="updateChartTimeframe()">
+            <option value="M1">M1</option>
+            <option value="M5">M5</option>
+            <option value="M15">M15</option>
+            <option value="H1" selected>H1</option>
+            <option value="H4">H4</option>
+            <option value="D1">D1</option>
+          </select>
+          
+          <!-- Chart Type -->
+          <div class="chart-type-section">
+            <select id="chartTypeSelect" class="chart-type-select" onchange="setChartType(this.value)">
+              <option value="line">📈 Line</option>
+              <option value="area">🟦 Area</option>
+              <option value="trend">🎯 Bull/Bear Trend</option>
+              <option value="candlestick">🕯️ Candlestick</option>
+            </select>
+            
+            <!-- Dynamic Color Pickers -->
+            <div id="colorPickers" class="color-pickers">
+              <!-- Color pickers will be dynamically shown based on chart type -->
+            </div>
+          </div>
+          
+          <!-- Chart Controls -->
+          <button class="control-btn" id="crosshairBtn" onclick="toggleCrosshair()">⊕</button>
+          <button class="control-btn" onclick="downloadChart()">💾 Save</button>
+          <button class="control-btn" onclick="zoomIn()">🔍</button>
     
-    .gauge-container {
-        width: 120px;
-        height: 100px;
-    }
-}
-
-/* ==================== ANALYSIS SECTIONS ==================== */
-.analysis-section {
-    background: var(--card);
-    border-radius: 12px;
-    padding: 20px;
-    margin: 16px;
-    border: 1px solid var(--border);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
-}
-
-.analysis-section h3 {
-    margin: 0 0 16px 0;
-    font-size: 1.1rem;
-    font-weight: 600;
-    color: var(--text);
-    border-bottom: 2px solid var(--accent);
-    padding-bottom: 8px;
-}
-
-/* Multi-Timeframe Strength */
-.timeframe-strength-container {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
-.timeframe-strength-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 10px;
-    background: rgba(255, 255, 255, 0.03);
-    border-radius: 8px;
-    border: 1px solid var(--border);
-}
-
-.timeframe-label {
-    font-family: 'JetBrains Mono', monospace;
-    font-weight: 600;
-    font-size: 0.85rem;
-    color: var(--text);
-    min-width: 40px;
-}
-
-.strength-bar-container {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.strength-bar {
-    flex: 1;
-    height: 8px;
-    background: var(--bg);
-    border-radius: 4px;
-    overflow: hidden;
-    border: 1px solid var(--border);
-}
-
-.strength-fill {
-    height: 100%;
-    background: linear-gradient(90deg, #ff4444, #ffaa00, #00cc66);
-    border-radius: 4px;
-    transition: width 0.5s ease;
-}
-
-.strength-fill.strong { background: #00cc66; }
-.strength-fill.moderate { background: #ffaa00; }
-.strength-fill.weak { background: #ff4444; }
-
-.strength-value {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.8rem;
-    font-weight: 600;
-    min-width: 35px;
-    text-align: right;
-}
-
-.strength-value.strong { color: #00cc66; }
-.strength-value.moderate { color: #ffaa00; }
-.strength-value.weak { color: #ff4444; }
-
-.timeframe-direction {
-    font-size: 1.2rem;
-    min-width: 30px;
-    text-align: center;
-}
-
-.timeframe-direction.bullish { color: #00cc66; }
-.timeframe-direction.bearish { color: #ff4444; }
-
-/* Indicator Consensus */
-.consensus-container {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
-}
-
-.consensus-meters {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-}
-
-.consensus-meter {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-}
-
-.meter-label {
-    font-size: 0.8rem;
-    font-weight: 500;
-    color: var(--text);
-}
-
-.meter-bar {
-    height: 8px;
-    background: var(--bg);
-    border-radius: 4px;
-    overflow: hidden;
-    border: 1px solid var(--border);
-    position: relative;
-}
-
-.meter-fill {
-    height: 100%;
-    background: linear-gradient(90deg, #ff4444, #ffaa00, #00cc66);
-    border-radius: 4px;
-    transition: width 0.5s ease;
-}
-
-.meter-value {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: var(--gray);
-    text-align: right;
-}
-
-.consensus-summary {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(255, 255, 255, 0.03);
-    border-radius: 8px;
-    border: 1px solid var(--border);
-    padding: 16px;
-}
-
-.consensus-status {
-    font-size: 0.9rem;
-    font-weight: 600;
-    text-align: center;
-}
-
-.consensus-status.strong { color: #00cc66; }
-.consensus-status.moderate { color: #ffaa00; }
-.consensus-status.weak { color: #ff4444; }
-
-/* Market Structure */
-.structure-container {
-    display: grid;
-    grid-template-columns: 2fr 1fr;
-    gap: 20px;
-}
-
-.structure-levels {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-}
-
-.levels-group h4 {
-    margin: 0 0 10px 0;
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: var(--text);
-    padding-bottom: 6px;
-    border-bottom: 1px solid var(--border);
-}
-
-.levels-group:first-child h4 { color: #FF4D4D; }
-.levels-group:last-child h4 { color: #00D394; }
-
-.levels-list {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-}
-
-.level-item {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.8rem;
-    padding: 6px 8px;
-    border-radius: 4px;
-    border: 1px solid var(--border);
-    text-align: center;
-}
-
-.level-item.resistance {
-    background: rgba(255, 77, 77, 0.1);
-    color: #FF4D4D;
-    border-color: rgba(255, 77, 77, 0.3);
-}
-
-.level-item.support {
-    background: rgba(0, 211, 148, 0.1);
-    color: #00D394;
-    border-color: rgba(0, 211, 148, 0.3);
-}
-
-.structure-trend {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    justify-content: center;
-}
-
-.trend-indicator {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px;
-    background: rgba(255, 255, 255, 0.03);
-    border-radius: 8px;
-    border: 1px solid var(--border);
-}
-
-.trend-label {
-    font-size: 0.85rem;
-    font-weight: 500;
-    color: var(--text);
-}
-
-.trend-value {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.85rem;
-    font-weight: 600;
-    padding: 4px 8px;
-    border-radius: 6px;
-}
-
-.trend-value.bullish { 
-    background: rgba(0, 211, 148, 0.1); 
-    color: #00D394;
-    border: 1px solid rgba(0, 211, 148, 0.2);
-}
-
-.trend-value.bearish { 
-    background: rgba(255, 77, 77, 0.1); 
-    color: #FF4D4D;
-    border: 1px solid rgba(255, 77, 77, 0.2);
-}
-
-.trend-value.neutral { 
-    background: rgba(148, 163, 184, 0.1); 
-    color: #94A3B8;
-    border: 1px solid rgba(148, 163, 184, 0.2);
-}
-
-.trend-strength {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 10px;
-    background: rgba(255, 255, 255, 0.03);
-    border-radius: 8px;
-    border: 1px solid var(--border);
-}
-
-.trend-bar {
-    height: 6px;
-    background: var(--bg);
-    border-radius: 3px;
-    overflow: hidden;
-    border: 1px solid var(--border);
-}
-
-.trend-fill {
-    height: 100%;
-    background: linear-gradient(90deg, #ff4444, #ffaa00, #00cc66);
-    border-radius: 3px;
-    transition: width 0.5s ease;
-}
-
-/* Trading Setups */
-.setups-container {
-    display: grid;
-    grid-template-columns: 2fr 1fr;
-    gap: 20px;
-}
-
-.setup-cards {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 12px;
-}
-
-.setup-card {
-    background: rgba(255, 255, 255, 0.03);
-    border-radius: 8px;
-    padding: 12px;
-    border: 1px solid var(--border);
-    transition: all 0.3s ease;
-}
-
-.setup-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
-}
-
-.setup-card.long {
-    border-left: 4px solid #00D394;
-    background: linear-gradient(135deg, rgba(0, 211, 148, 0.05), transparent);
-}
-
-.setup-card.short {
-    border-left: 4px solid #FF4D4D;
-    background: linear-gradient(135deg, rgba(255, 77, 77, 0.05), transparent);
-}
-
-.setup-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 8px;
-}
-
-.setup-type {
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: var(--text);
-}
-
-.setup-confidence {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.75rem;
-    font-weight: 600;
-    padding: 2px 6px;
-    border-radius: 10px;
-}
-
-.setup-confidence.high { background: rgba(0, 211, 148, 0.2); color: #00D394; }
-.setup-confidence.medium { background: rgba(255, 170, 0, 0.2); color: #FFAA00; }
-.setup-confidence.low { background: rgba(255, 77, 77, 0.2); color: #FF4D4D; }
-
-.setup-details {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.setup-direction {
-    font-size: 0.75rem;
-    font-weight: 700;
-    padding: 4px 8px;
-    border-radius: 4px;
-    text-align: center;
-    text-transform: uppercase;
-}
-
-.setup-direction.long { background: rgba(0, 211, 148, 0.2); color: #00D394; }
-.setup-direction.short { background: rgba(255, 77, 77, 0.2); color: #FF4D4D; }
-
-.setup-metrics {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.setup-metric {
-    display: flex;
-    justify-content: space-between;
-    font-size: 0.7rem;
-}
-
-.setup-metric span:first-child {
-    color: var(--gray);
-}
-
-.setup-metric span:last-child {
-    font-family: 'JetBrains Mono', monospace;
-    font-weight: 600;
-    color: var(--text);
-}
-
-.setup-metrics {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 12px;
-    background: rgba(255, 255, 255, 0.03);
-    border-radius: 8px;
-    border: 1px solid var(--border);
-}
-
-.metric-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.metric-label {
-    font-size: 0.8rem;
-    color: var(--gray);
-}
-
-.metric-value {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: var(--text);
-}
-
-.no-setups {
-    text-align: center;
-    color: var(--gray);
-    font-size: 0.85rem;
-    padding: 20px;
-    font-style: italic;
-    grid-column: 1 / -1;
-}
-
-/* Volume Analysis */
-.volume-container {
-    display: grid;
-    grid-template-columns: 1fr 2fr;
-    gap: 20px;
-}
-
-.volume-metrics {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
-.volume-metric {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    padding: 10px;
-    background: rgba(255, 255, 255, 0.03);
-    border-radius: 8px;
-    border: 1px solid var(--border);
-}
-
-.volume-label {
-    font-size: 0.75rem;
-    color: var(--gray);
-    font-weight: 500;
-}
-
-.volume-value {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: var(--text);
-}
-
-.volume-value.increasing { color: #00D394; }
-.volume-value.decreasing { color: #FF4D4D; }
-.volume-value.neutral { color: #94A3B8; }
-.volume-value.strong { color: #00D394; }
-.volume-value.weak { color: #FF4D4D; }
-
-.volume-bars {
-    display: flex;
-    align-items: end;
-    gap: 12px;
-    height: 120px;
-    padding: 16px;
-    background: rgba(255, 255, 255, 0.03);
-    border-radius: 8px;
-    border: 1px solid var(--border);
-}
-
-.volume-bar-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-    flex: 1;
-}
-
-.volume-bar-label {
-    font-size: 0.7rem;
-    color: var(--gray);
-    font-weight: 500;
-}
-
-.volume-bar {
-    flex: 1;
-    width: 20px;
-    background: var(--bg);
-    border-radius: 10px;
-    border: 1px solid var(--border);
-    position: relative;
-    overflow: hidden;
-    display: flex;
-    align-items: end;
-}
-
-.volume-bar-fill {
-    width: 100%;
-    background: linear-gradient(to top, #ff4444, #ffaa00, #00cc66);
-    border-radius: 10px;
-    transition: height 0.5s ease;
-}
-
-/* ==================== ALERTS STYLING ==================== */
-.alerts-container {
-    padding: 16px;
-    max-width: 800px;
-    margin: 0 auto;
-    background: var(--bg);
-}
-
-.alert-item {
-    background: var(--card);
-    border-radius: 8px;
-    padding: 12px;
-    margin-bottom: 12px;
-    border-left: 4px solid #FF9900;
-    border: 1px solid var(--border);
-    transition: all 0.3s ease;
-}
-
-.alert-item.active {
-    border-left-color: #FF0000;
-    background: rgba(255, 0, 0, 0.05);
-}
-
-.alert-item.resolved {
-    border-left-color: #00FF00;
-    background: rgba(0, 255, 0, 0.05);
-    opacity: 0.7;
-}
-
-.alert-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 8px;
-}
-
-.alert-type {
-    font-weight: 600;
-    font-size: 0.85rem;
-    padding: 2px 8px;
-    border-radius: 12px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.alert-time {
-    font-size: 0.75rem;
-    color: var(--gray);
-    font-family: 'JetBrains Mono', monospace;
-}
-
-.alert-message {
-    font-size: 0.85rem;
-    margin-bottom: 8px;
-    line-height: 1.4;
-}
-
-.alert-actions {
-    display: flex;
-    gap: 8px;
-}
-
-.alert-btn {
-    padding: 6px 12px;
-    border: 1px solid var(--border);
-    background: var(--bg);
-    color: var(--text);
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.75rem;
-    transition: all 0.2s ease;
-    font-weight: 500;
-}
-
-.alert-btn:hover {
-    background: var(--accent-bg);
-    border-color: var(--accent);
-    transform: translateY(-1px);
-}
-
-.alert-btn.resolve {
-    background: rgba(0, 211, 148, 0.1);
-    border-color: rgba(0, 211, 148, 0.3);
-    color: #00D394;
-}
-
-.alert-btn.test {
-    background: rgba(59, 130, 246, 0.1);
-    border-color: rgba(59, 130, 246, 0.3);
-    color: #3B82F6;
-}
-
-.alert-btn.clear {
-    background: rgba(239, 68, 68, 0.1);
-    border-color: rgba(239, 68, 68, 0.3);
-    color: #EF4444;
-}
-
-.alert-setting-group {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
-.alert-setting-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px;
-    background: rgba(255, 255, 255, 0.03);
-    border-radius: 6px;
-    border: 1px solid var(--border);
-    transition: all 0.2s ease;
-}
-
-.alert-setting-item:hover {
-    background: rgba(255, 255, 255, 0.05);
-    border-color: var(--accent);
-}
-
-.alert-setting-item input[type="checkbox"] {
-    width: 16px;
-    height: 16px;
-    accent-color: var(--accent);
-}
-
-.alert-setting-item label {
-    font-size: 0.85rem;
-    color: var(--text);
-    cursor: pointer;
-    font-weight: 500;
-}
-
-.alert-actions-global {
-    display: flex;
-    gap: 8px;
-    margin-top: 16px;
-    justify-content: center;
-}
-
-.no-alerts {
-    text-align: center;
-    padding: 40px;
-    color: var(--gray);
-}
-
-.no-alerts-icon {
-    font-size: 2rem;
-    margin-bottom: 8px;
-    opacity: 0.5;
-}
-
-.no-alerts-text {
-    font-size: 1rem;
-    font-weight: 600;
-    margin-bottom: 4px;
-}
-
-.no-alerts-subtext {
-    font-size: 0.85rem;
-    opacity: 0.7;
-}
-
-/* Alert Type Colors */
-.alert-item.momentum { 
-    border-left: 4px solid #3A86FF; 
-    background: rgba(58, 134, 255, 0.05);
-}
-
-.alert-item.volatility { 
-    border-left: 4px solid #FFAA00; 
-    background: rgba(255, 170, 0, 0.05);
-}
-
-.alert-item.strength { 
-    border-left: 4px solid #00D394; 
-    background: rgba(0, 211, 148, 0.05);
-}
-
-.alert-item.risk { 
-    border-left: 4px solid #FF4D4D; 
-    background: rgba(255, 77, 77, 0.05);
-}
-
-.alert-item.rsi { 
-    border-left: 4px solid #F59E0B; 
-    background: rgba(245, 158, 11, 0.05);
-}
-
-.alert-item.volume { 
-    border-left: 4px solid #8B5CF6; 
-    background: rgba(139, 92, 246, 0.05);
-}
-
-.alert-item.price { 
-    border-left: 4px solid #EC4899; 
-    background: rgba(236, 72, 153, 0.05);
-}
-
-.alert-item.test { 
-    border-left: 4px solid #6B7280; 
-    background: rgba(107, 114, 128, 0.05);
-}
-
-.alert-item.momentum .alert-type { 
-    background: rgba(58, 134, 255, 0.2); 
-    color: #3A86FF; 
-}
-
-.alert-item.volatility .alert-type { 
-    background: rgba(255, 170, 0, 0.2); 
-    color: #FFAA00; 
-}
-
-.alert-item.strength .alert-type { 
-    background: rgba(0, 211, 148, 0.2); 
-    color: #00D394; 
-}
-
-.alert-item.risk .alert-type { 
-    background: rgba(255, 77, 77, 0.2); 
-    color: #FF4D4D; 
-}
-
-.alert-item.rsi .alert-type { 
-    background: rgba(245, 158, 11, 0.2); 
-    color: #F59E0B; 
-}
-
-.alert-item.volume .alert-type { 
-    background: rgba(139, 92, 246, 0.2); 
-    color: #8B5CF6; 
-}
-
-.alert-item.price .alert-type { 
-    background: rgba(236, 72, 153, 0.2); 
-    color: #EC4899; 
-}
-
-.alert-item.test .alert-type { 
-    background: rgba(107, 114, 128, 0.2); 
-    color: #6B7280; 
-}
-
-/* ==================== ANALYSIS RESPONSIVE DESIGN ==================== */
-@media (max-width: 1200px) {
-    .gauge-row {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 16px;
-    }
-    
-    .consensus-container {
-        grid-template-columns: 1fr;
-        gap: 16px;
-    }
-    
-    .structure-container {
-        grid-template-columns: 1fr;
-        gap: 16px;
-    }
-    
-    .setups-container {
-        grid-template-columns: 1fr;
-        gap: 16px;
-    }
-    
-    .volume-container {
-        grid-template-columns: 1fr;
-        gap: 16px;
-    }
-}
-
-@media (max-width: 768px) {
-    .gauges-container {
-        margin: 10px;
-        padding: 16px;
-    }
-    
-    .gauge-row {
-        grid-template-columns: 1fr;
-        gap: 12px;
-    }
-    
-    .gauge-container {
-        width: 120px;
-        height: 100px;
-    }
-    
-    .gauge-score {
-        font-size: 1.1rem;
-    }
-    
-    .analysis-section {
-        margin: 10px;
-        padding: 16px;
-    }
-    
-    .structure-levels {
-        grid-template-columns: 1fr;
-        gap: 12px;
-    }
-    
-    .setup-cards {
-        grid-template-columns: 1fr;
-    }
-    
-    .volume-bars {
-        height: 80px;
-        padding: 12px;
-    }
-    
-    .volume-bar {
-        width: 16px;
-    }
-}
-
-/* Animation for gauge updates */
-@keyframes gaugePulse {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.05); }
-    100% { transform: scale(1); }
-}
-
-.gauge-item.updating .gauge-container {
-    animation: gaugePulse 0.6s ease;
-}
-
-/* Alert animations */
-@keyframes alertPulse {
-    0% { box-shadow: 0 0 0 0 rgba(255, 77, 77, 0.7); }
-    70% { box-shadow: 0 0 0 10px rgba(255, 77, 77, 0); }
-    100% { box-shadow: 0 0 0 0 rgba(255, 77, 77, 0); }
-}
-
-.alert-item.active:not(.resolved) {
-    animation: alertPulse 2s infinite;
-}
-
-/* Summary content styling for analysis */
-.summary-content {
-    display: grid;
-    gap: 12px;
-    margin-top: 16px;
-}
-
-.summary-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 12px;
-    background: rgba(255, 255, 255, 0.03);
-    border-radius: 8px;
-    border: 1px solid var(--border);
-}
-
-.summary-item .label {
-    font-weight: 500;
-    color: var(--text);
-    font-size: 0.9rem;
-}
-
-.summary-item .value {
-    font-weight: 600;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.9rem;
-    padding: 4px 8px;
-    border-radius: 6px;
-}
-
-.summary-item .value.bullish { 
-    background: rgba(0, 211, 148, 0.1); 
-    color: #00D394;
-    border: 1px solid rgba(0, 211, 148, 0.2);
-}
-
-.summary-item .value.bearish { 
-    background: rgba(255, 77, 77, 0.1); 
-    color: #FF4D4D;
-    border: 1px solid rgba(255, 77, 77, 0.2);
-}
-
-.summary-item .value.neutral { 
-    background: rgba(148, 163, 184, 0.1); 
-    color: #94A3B8;
-    border: 1px solid rgba(148, 163, 184, 0.2);
-}
-
-.summary-item .value.strong { 
-    background: rgba(0, 211, 148, 0.1); 
-    color: #00D394;
-    border: 1px solid rgba(0, 211, 148, 0.2);
-}
-
-.summary-item .value.weak { 
-    background: rgba(255, 77, 77, 0.1); 
-    color: #FF4D4D;
-    border: 1px solid rgba(255, 77, 77, 0.2);
-}
-
-.summary-item .value.moderate { 
-    background: rgba(255, 170, 0, 0.1); 
-    color: #FFAA00;
-    border: 1px solid rgba(255, 170, 0, 0.2);
-}
-
-.summary-item .value.high { 
-    background: rgba(255, 77, 77, 0.1); 
-    color: #FF4D4D;
-    border: 1px solid rgba(255, 77, 77, 0.2);
-}
-
-.summary-item .value.low { 
-    background: rgba(0, 211, 148, 0.1); 
-    color: #00D394;
-    border: 1px solid rgba(0, 211, 148, 0.2);
-}
-
-.summary-item .value.medium { 
-    background: rgba(255, 170
+          <button class="control-btn" onclick="resetZoom()">🔄</button>
+          
+          <!-- Current Price Display -->
+          <span class="current-price" id="currentPrice">--</span>
+          <span class="chart-status" id="chartStatus">Select TF</span>
+        </div>
+        
+        <div class="chart-area">
+          <!-- Enhanced Indicators Panel -->
+          <div class="indicators-panel collapsed" id="indicatorsPanel">
+            <div class="panel-header">
+              <span class="panel-emoji" onclick="toggleIndicatorsPanel()">📊</span>
+              <h3 onclick="toggleIndicatorsPanel()">Indicators & Settings</h3>
+            </div>
+            
+            <!-- Indicators Dropdown -->
+            <div class="indicators-dropdown-section">
+              <select id="indicatorsDropdown" class="indicators-dropdown" onchange="addIndicatorFromDropdown(this.value)">
+                <option value="">+ Add Indicator</option>
+                <option value="sma">SMA</option>
+                <option value="ema">EMA</option>
+                <option value="rsi">RSI</option>
+                <option value="macd">MACD</option>
+                <option value="bollinger">Bollinger</option>
+                <option value="stochastic">Stochastic</option>
+                <option value="supportresistance">Support/Resistance</option>
+              </select>
+            </div>
+            
+            <!-- Active Indicators List -->
+            <div class="indicators-list" id="indicatorsList">
+              <!-- Active indicators with settings will be added here -->
+            </div>
+          </div>
+          
+          <!-- Main Chart Canvas with Axis Indicators Container -->
+          <div class="chart-wrapper">
+            <canvas id="mainChart"></canvas>
+            <!-- Axis Indicators will be dynamically inserted here -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="analysis-tab" class="tab-content">
+<!-- Gauges Container -->
+<div class="gauges-container" id="gauges-container">
+    <div class="gauge-row">
+        <div class="gauge-item">
+            <div class="gauge-title">Momentum</div>
+            <div class="gauge-container">
+                <div class="gauge-arc">
+                    <div class="gauge-arc-fill" id="momentum-arc"></div>
+                </div>
+                <div class="gauge-hub"></div>
+                <div class="gauge-needle-container">
+                    <div class="gauge-needle" id="momentum-needle">
+                        <div class="needle-head"></div>
+                    </div>
+                </div>
+                <div class="gauge-value-container">
+                    <div class="gauge-score" id="momentum-score">50</div>
+                    <div class="gauge-unit">%</div>
+                </div>
+                <div class="gauge-label-container">
+                    <div class="gauge-label" id="momentum-label"></div>
+                    <div class="gauge-indicator-dot" id="momentum-indicator"></div>
+                </div>
+                <div class="gauge-markers">
+                    <div class="marker marker-0">0</div>
+                    <div class="marker marker-25">25</div>
+                    <div class="marker marker-50">50</div>
+                    <div class="marker marker-75">75</div>
+                    <div class="marker marker-100">100</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="gauge-item">
+            <div class="gauge-title">Volatility</div>
+            <div class="gauge-container">
+                <div class="gauge-arc">
+                    <div class="gauge-arc-fill" id="volatility-arc"></div>
+                </div>
+                <div class="gauge-hub"></div>
+                <div class="gauge-needle-container">
+                    <div class="gauge-needle" id="volatility-needle">
+                        <div class="needle-head"></div>
+                    </div>
+                </div>
+                <div class="gauge-value-container">
+                    <div class="gauge-score" id="volatility-score">50</div>
+                    <div class="gauge-unit">%</div>
+                </div>
+                <div class="gauge-label-container">
+                    <div class="gauge-label" id="volatility-label"></div>
+                    <div class="gauge-indicator-dot" id="volatility-indicator"></div>
+                </div>
+                <div class="gauge-markers">
+                    <div class="marker marker-0">0</div>
+                    <div class="marker marker-25">25</div>
+                    <div class="marker marker-50">50</div>
+                    <div class="marker marker-75">75</div>
+                    <div class="marker marker-100">100</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="gauge-item">
+            <div class="gauge-title">Strength</div>
+            <div class="gauge-container">
+                <div class="gauge-arc">
+                    <div class="gauge-arc-fill" id="strength-arc"></div>
+                </div>
+                <div class="gauge-hub"></div>
+                <div class="gauge-needle-container">
+                    <div class="gauge-needle" id="strength-needle">
+                        <div class="needle-head"></div>
+                    </div>
+                </div>
+                <div class="gauge-value-container">
+                    <div class="gauge-score" id="strength-score">50</div>
+                    <div class="gauge-unit">%</div>
+                </div>
+                <div class="gauge-label-container">
+                    <div class="gauge-label" id="strength-label"></div>
+                    <div class="gauge-indicator-dot" id="strength-indicator"></div>
+                </div>
+                <div class="gauge-markers">
+                    <div class="marker marker-0">0</div>
+                    <div class="marker marker-25">25</div>
+                    <div class="marker marker-50">50</div>
+                    <div class="marker marker-75">75</div>
+                    <div class="marker marker-100">100</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="gauge-item">
+            <div class="gauge-title">Risk</div>
+            <div class="gauge-container">
+                <div class="gauge-arc">
+                    <div class="gauge-arc-fill" id="risk-arc"></div>
+                </div>
+                <div class="gauge-hub"></div>
+                <div class="gauge-needle-container">
+                    <div class="gauge-needle" id="risk-needle">
+                        <div class="needle-head"></div>
+                    </div>
+                </div>
+                <div class="gauge-value-container">
+                    <div class="gauge-score" id="risk-score">50</div>
+                    <div class="gauge-unit">%</div>
+                </div>
+                <div class="gauge-label-container">
+                    <div class="gauge-label" id="risk-label"></div>
+                    <div class="gauge-indicator-dot" id="risk-indicator"></div>
+                </div>
+                <div class="gauge-markers">
+                    <div class="marker marker-0">0</div>
+                    <div class="marker marker-25">25</div>
+                    <div class="marker marker-50">50</div>
+                    <div class="marker marker-75">75</div>
+                    <div class="marker marker-100">100</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+      <!-- Multi-Timeframe Strength -->
+      <div class="analysis-section" id="timeframe-strength-section">
+        <h3>📈 Multi-Timeframe Strength</h3>
+        <div class="timeframe-strength-container" id="timeframe-strength-container">
+          <!-- Timeframe strength bars will be populated here -->
+        </div>
+      </div>
+
+      <!-- Indicator Consensus -->
+      <div class="analysis-section" id="indicator-consensus-section">
+        <h3>🎯 Indicator Consensus</h3>
+        <div class="consensus-container" id="consensus-container">
+          <div class="consensus-meters">
+            <div class="consensus-meter">
+              <div class="meter-label">Trend Indicators</div>
+              <div class="meter-bar">
+                <div class="meter-fill" id="trend-consensus-fill" style="width: 0%"></div>
+              </div>
+              <div class="meter-value" id="trend-consensus-value">0%</div>
+            </div>
+            <div class="consensus-meter">
+              <div class="meter-label">Momentum Indicators</div>
+              <div class="meter-bar">
+                <div class="meter-fill" id="momentum-consensus-fill" style="width: 0%"></div>
+              </div>
+              <div class="meter-value" id="momentum-consensus-value">0%</div>
+            </div>
+            <div class="consensus-meter">
+              <div class="meter-label">Volatility Indicators</div>
+              <div class="meter-bar">
+                <div class="meter-fill" id="volatility-consensus-fill" style="width: 0%"></div>
+              </div>
+              <div class="meter-value" id="volatility-consensus-value">0%</div>
+            </div>
+          </div>
+          <div class="consensus-summary" id="consensus-summary">
+            <div class="consensus-status">Analyzing indicator alignment...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Market Structure -->
+      <div class="analysis-section" id="market-structure-section">
+        <h3>🏗️ Market Structure</h3>
+        <div class="structure-container" id="structure-container">
+          <div class="structure-levels">
+            <div class="levels-group">
+              <h4>Resistance Levels</h4>
+              <div class="levels-list" id="resistance-levels">
+                <!-- Resistance levels will be populated here -->
+              </div>
+            </div>
+            <div class="levels-group">
+              <h4>Support Levels</h4>
+              <div class="levels-list" id="support-levels">
+                <!-- Support levels will be populated here -->
+              </div>
+            </div>
+          </div>
+          <div class="structure-trend">
+            <div class="trend-indicator">
+              <span class="trend-label">Primary Trend:</span>
+              <span class="trend-value" id="primary-trend">Analyzing...</span>
+            </div>
+            <div class="trend-strength">
+              <span class="trend-label">Trend Strength:</span>
+              <div class="trend-bar">
+                <div class="trend-fill" id="trend-strength-fill" style="width: 0%"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Trading Setups -->
+      <div class="analysis-section" id="trading-setup-section">
+        <h3>💰 Trading Setups</h3>
+        <div class="setups-container" id="setups-container">
+          <div class="setup-cards" id="setup-cards">
+            <!-- Trading setup cards will be populated here -->
+          </div>
+          <div class="setup-metrics">
+            <div class="metric-item">
+              <span class="metric-label">Avg. Risk/Reward:</span>
+              <span class="metric-value" id="avg-risk-reward">1:1.5</span>
+            </div>
+            <div class="metric-item">
+              <span class="metric-label">Success Probability:</span>
+              <span class="metric-value" id="success-probability">65%</span>
+            </div>
+            <div class="metric-item">
+              <span class="metric-label">Market Condition:</span>
+              <span class="metric-value" id="market-condition">Trending</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Volume Analysis -->
+      <div class="analysis-section" id="volume-analysis-section">
+        <h3>📊 Volume Analysis</h3>
+        <div class="volume-container" id="volume-container">
+          <div class="volume-metrics">
+            <div class="volume-metric">
+              <div class="volume-label">Volume Trend</div>
+              <div class="volume-value" id="volume-trend">Neutral</div>
+            </div>
+            <div class="volume-metric">
+              <div class="volume-label">Volume vs Avg</div>
+              <div class="volume-value" id="volume-vs-avg">+15%</div>
+            </div>
+            <div class="volume-metric">
+              <div class="volume-label">Volume Confirmation</div>
+              <div class="volume-value" id="volume-confirmation">Strong</div>
+            </div>
+          </div>
+          <div class="volume-bars">
+            <div class="volume-bar-container">
+              <div class="volume-bar-label">D1</div>
+              <div class="volume-bar">
+                <div class="volume-bar-fill" id="volume-d1" style="height: 0%"></div>
+              </div>
+            </div>
+            <div class="volume-bar-container">
+              <div class="volume-bar-label">H4</div>
+              <div class="volume-bar">
+                <div class="volume-bar-fill" id="volume-h4" style="height: 0%"></div>
+              </div>
+            </div>
+            <div class="volume-bar-container">
+              <div class="volume-bar-label">H1</div>
+              <div class="volume-bar">
+                <div class="volume-bar-fill" id="volume-h1" style="height: 0%"></div>
+              </div>
+            </div>
+            <div class="volume-bar-container">
+              <div class="volume-bar-label">M15</div>
+              <div class="volume-bar">
+                <div class="volume-bar-fill" id="volume-m15" style="height: 0%"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Technical Summary & Signals -->
+      <div class="analysis-section">
+        <h3>📊 Technical Summary</h3>
+        <div id="technicalSummary">Loading analysis...</div>
+      </div>
+      <div class="analysis-section">
+        <h3>🎯 Trading Signals</h3>
+        <div class="signal-list" id="tradingSignals"></div>
+      </div>
+    </div>
+
+    <div id="alerts-tab" class="tab-content">
+      <div class="alerts-container">
+        <div class="analysis-section">
+          <h3>🔔 Active Alerts</h3>
+          <div id="activeAlerts">
+            <div class="no-alerts">
+              <div class="no-alerts-icon">🔕</div>
+              <div class="no-alerts-text">No active alerts</div>
+              <div class="no-alerts-subtext">Alerts will appear here when triggered</div>
+            </div>
+          </div>
+        </div>
+        <div class="analysis-section">
+          <h3>⚙️ Alert Settings</h3>
+          <div id="alertSettings">
+            <div class="alert-setting-group">
+              <div class="alert-setting-item">
+                <input type="checkbox" id="rsiAlert" checked onchange="toggleAlertSetting('rsiAlerts', this.checked)">
+                <label for="rsiAlert">RSI Overbought/Oversold (70/30)</label>
+              </div>
+              <div class="alert-setting-item">
+                <input type="checkbox" id="priceAlert" onchange="toggleAlertSetting('priceAlerts', this.checked)">
+                <label for="priceAlert">Key Price Level Breaks</label>
+              </div>
+              <div class="alert-setting-item">
+                <input type="checkbox" id="volumeAlert" checked onchange="toggleAlertSetting('volumeAlerts', this.checked)">
+                <label for="volumeAlert">Volume Spikes (2x Average)</label>
+              </div>
+              <div class="alert-setting-item">
+                <input type="checkbox" id="momentumAlert" checked onchange="toggleAlertSetting('momentumAlerts', this.checked)">
+                <label for="momentumAlert">Momentum Shifts</label>
+              </div>
+            </div>
+            <div class="alert-actions-global">
+              <button class="alert-btn test" onclick="testAlertSystem()">Test Alert System</button>
+              <button class="alert-btn clear" onclick="clearAllAlerts()">Clear All Alerts</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =============================================================== -->
+  <!-- ✅ CORRECTED SCRIPT LOADING ORDER -->
+  <!-- =============================================================== -->
+  
+  <!-- Core Chart.js Dependencies -->
+  <script src="https://cdn.jsdelivr.net/npm/luxon@3"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1"></script>
+  
+  <!-- Financial Charts Extension -->
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial@0.2.0"></script>
+  
+  <!-- Additional Chart.js Plugins -->
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+  <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@1.2.1"></script>
+
+  <!-- Load main unified script FIRST -->
+  <script src="app.js"></script>
+  
+  <!-- Then load modules -->
+  <script src="analysis.js"></script>
+  <script src="alerts.js"></script>
+</body>
+</html>#

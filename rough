@@ -1,160 +1,20 @@
-// Chart options and configuration - FIXED TOOLTIP
-function getEnhancedChartOptions(timeframe, theme) {
-    return {
-        responsive: true, 
-        maintainAspectRatio: false,
-        interaction: { 
-            mode: 'nearest', 
-            intersect: false, 
-            axis: 'xy' 
-        },
-        plugins: {
-            legend: {
-                display: false
-            },
-            tooltip: {
-                enabled: currentChartType !== 'candlestick', // ← ONLY THIS LINE ADDED
-                mode: 'nearest',
-                intersect: false,
-                backgroundColor: 'rgba(15, 23, 42, 0.95)',
-                titleColor: theme.text,
-                bodyColor: theme.textSecondary,
-                borderColor: theme.grid,
-                borderWidth: 1,
-                cornerRadius: 6,
-                padding: 12,
-                callbacks: {
-                    title: function(context) {
-                        const date = new Date(context[0].parsed.x);
-                        return date.toLocaleDateString('en-US', {
-                            weekday: 'short',
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                            hour12: false
-                        });
-                    },
-                    label: function(context) {
-                        let label = context.dataset.label || '';
-                        
-                        // CANDLESTICK TOOLTIP - show OHLC data
-                        if (currentChartType === 'candlestick' && context.raw) {
-                            const item = context.raw;
-                            label += ` O:${item.o.toFixed(5)} H:${item.h.toFixed(5)} L:${item.l.toFixed(5)} C:${item.c.toFixed(5)}`;
-                        } else {
-                            // LINE/AREA CHART TOOLTIP - show y value
-                            if (label) label += ': ';
-                            if (context.parsed.y !== null) {
-                                label += new Intl.NumberFormat('en-US', { 
-                                    minimumFractionDigits: 2,
-                                    maximumFractionDigits: 5 
-                                }).format(context.parsed.y);
-                            }
-                        }
-                        return label;
-                    }
-                }
-            },
-            zoom: {
-                zoom: {
-                    wheel: { enabled: false }, // Disable wheel zoom - we handle this separately
-                    pinch: { enabled: true },
-                    mode: 'xy',
-                    drag: {
-                        enabled: isZoomModeActive, // Controlled by our toggle
-                        modifierKey: null,
-                        backgroundColor: isZoomModeActive ? 'rgba(58, 134, 255, 0.3)' : 'transparent', // Blue when ON, transparent when OFF
-                        borderColor: isZoomModeActive ? 'rgba(58, 134, 255, 0.8)' : 'transparent', // Blue when ON, transparent when OFF
-                        borderWidth: 1
-                    }
-                },
-                pan: {
-                    enabled: false, // REMOVED PANNING COMPLETELY
-                    mode: 'x'
-                }
-            }
-        },
-        scales: {
-            x: {
-                type: 'time',
-                time: {
-                    unit: getProfessionalTimeUnit(timeframe),
-                    displayFormats: getProfessionalTimeFormats(timeframe)
-                },
-                grid: { 
-                    color: theme.grid,
-                    drawBorder: false,
-                    borderColor: 'transparent',
-                    borderWidth: 0,
-                    drawOnChartArea: true,
-                    drawTicks: true,
-                    lineWidth: (ctx) => {
-                        // Frame grid effect - thicker outer lines
-                        if (ctx.index === 0 || ctx.index === ctx.tickCount - 1) return 2;
-                        return 1;
-                    }
-                },
-                ticks: { 
-                    color: theme.textSecondary,
-                    maxRotation: 0,
-                    autoSkip: true,
-                    maxTicksLimit: 8
-                },
-                border: { 
-                    display: false
-                }
-            },
-            y: {
-                position: 'right',
-                grid: { 
-                    color: theme.grid,
-                    drawBorder: false,
-                    borderColor: 'transparent',
-                    borderWidth: 0,
-                    drawOnChartArea: true,
-                    drawTicks: true,
-                    lineWidth: (ctx) => {
-                        // Frame grid effect - thicker outer lines
-                        if (ctx.index === 0 || ctx.index === ctx.tickCount - 1) return 2;
-                        return 1;
-                    }
-                },
-                ticks: { 
-                    color: theme.textSecondary,
-                    callback: (value) => value.toFixed(5),
-                    maxTicksLimit: 6
-                },
-                border: { 
-                    display: false
-                }
-            },
-            y2: {
-                type: 'linear',
-                position: 'left',
-                grid: { 
-                    drawOnChartArea: false,
-                    drawBorder: false,
-                    borderColor: 'transparent',
-                    borderWidth: 0,
-                    lineWidth: (ctx) => {
-                        // Frame grid effect - thicker outer lines
-                        if (ctx.index === 0 || ctx.index === ctx.tickCount - 1) return 2;
-                        return 1;
-                    }
-                },
-                ticks: { 
-                    color: '#F59E0B',
-                    callback: (value) => value.toFixed(2),
-                    maxTicksLimit: 5
-                },
-                border: { 
-                    display: false
-                },
-                min: 0,
-                max: 100
-            }
-        }
-    };
-}
+app.js:776 Chart loading error: Error: "candlestick" is not a registered controller.
+    at sn._get (chart.js:13:83537)
+    at sn.getController (chart.js:13:82605)
+    at Tn.buildOrUpdateControllers (chart.js:13:94592)
+    at Tn.update (chart.js:13:95342)
+    at Tn.<anonymous> (chart.js:13:91533)
+    at Tn._doResize (chart.js:7:5652)
+    at Tn._resize (chart.js:13:92850)
+    at Tn.resize (chart.js:13:92441)
+    at a (chart.js:13:101406)
+    at Tn.bindResponsiveEvents (chart.js:13:101554)
+
+app.js:776 Chart loading error: Error: Canvas is already in use. Chart with ID '9' must be destroyed before the canvas with ID 'mainChart' can be reused.
+    at new Tn (chart.js:13:90635)
+    at renderProfessionalChart (app.js:729:20)
+    at app.js:764:13
+18
+chart.js:13 Uncaught TypeError: Cannot read properties of null (reading 'save')
+9
+chart.js:13 Uncaught TypeError: Cannot read properties of null (reading 'save')

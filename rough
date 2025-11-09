@@ -1,501 +1,1151 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>🧠 MEGA FLOWZ - Professional Trading Dashboard</title>
-  
-  <!-- Google Fonts for Professional Typography -->
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  
-  <!-- Local Styles -->
-  <link rel="stylesheet" href="pyramid_chart.css">
-  <link rel="stylesheet" href="analysis_alerts.css">
-</head>
-<body>
-  <div class="tabs-container">
-    <div class="tabs-header">
-      <button class="tab active" onclick="switchTab('pyramid')">🏔️ Pyramid</button>
-      <button class="tab" onclick="switchTab('chart')">📈 Chart</button>
-      <button class="tab" onclick="switchTab('analysis')">📊 Analysis</button>
-      <button class="tab" onclick="switchTab('alerts')">🔔 Alerts</button>
-    </div>
+// ===============================================================
+// 📊🔔 ANALYSIS_ALERTS.JS - PROFESSIONAL SPEEDOMETER VERSION
+// ===============================================================
 
-    <div id="pyramid-tab" class="tab-content active">
-      <div class="header">
-        <h1>🧠 MEGA FLOWZ - Professional Trading Dashboard</h1>
-        
-        <!-- Pyramid Controls -->
-        <div class="pyramid-style-selector">
-          <div class="style-controls">
-            <!-- Pairs Dropdown - EUR/USD as default -->
-            <select id="pairsSelect" class="style-dropdown" onchange="changePair(this.value)">
-              <!-- Forex Major Pairs -->
-              <option value="EUR/USD">💶 EUR/USD</option>
-              <option value="GBP/USD">💷 GBP/USD</option>
-              <option value="USD/JPY">💴 USD/JPY</option>
-              <option value="USD/CHF">🇨🇭 USD/CHF</option>
-              <option value="AUD/USD">🇦🇺 AUD/USD</option>
-              <option value="USD/CAD">🇨🇦 USD/CAD</option>
-              <option value="NZD/USD">🇳🇿 NZD/USD</option>
-              
-              <!-- Forex Minor Pairs -->
-              <option value="EUR/GBP">💶/💷 EUR/GBP</option>
-              <option value="EUR/JPY">💶/💴 EUR/JPY</option>
-              <option value="GBP/JPY">💷/💴 GBP/JPY</option>
-              <option value="EUR/CAD">💶/🇨🇦 EUR/CAD</option>
-              <option value="AUD/JPY">🇦🇺/💴 AUD/JPY</option>
-              
-              <!-- Cryptocurrencies -->
-              <option value="BTC/USD">₿ Bitcoin/USD</option>
-              <option value="ETH/USD">🔷 Ethereum/USD</option>
-              <option value="ADA/USD">🟥 Cardano/USD</option>
-              <option value="SOL/USD">🟦 Solana/USD</option>
-              <option value="XRP/USD">⚡ Ripple/USD</option>
-              <option value="DOT/USD">🔴 Polkadot/USD</option>
-              <option value="DOGE/USD">🐶 Dogecoin/USD</option>
-              <option value="LTC/USD">🔶 Litecoin/USD</option>
-              <option value="BNB/USD">💎 Binance Coin/USD</option>
-              <option value="MATIC/USD">🔷 Polygon/USD</option>
-              
-              <!-- Commodities -->
-              <option value="XAU/USD">🥇 Gold/USD</option>
-              <option value="XAG/USD">🥈 Silver/USD</option>
-              <option value="XPT/USD">🔧 Platinum/USD</option>
-              <option value="XPD/USD">⚡ Palladium/USD</option>
-              
-              <!-- Indices -->
-              <option value="US30">🇺🇸 Dow Jones</option>
-              <option value="SPX500">🇺🇸 S&P 500</option>
-              <option value="NAS100">🇺🇸 NASDAQ</option>
-              <option value="GER40">🇩🇪 DAX 40</option>
-              <option value="UK100">🇬🇧 FTSE 100</option>
-              <option value="JP225">🇯🇵 Nikkei 225</option>
-            </select>
-            
-            <!-- Pyramid Style Dropdown -->
-            <select id="pyramidStyleSelect" class="style-dropdown" onchange="changePyramidStyle(this.value)">
-              <option value="scalper">⚡ Scalper (M15→M5→M1)</option>
-              <option value="intraday">📈 Intraday (H1→M15→M5→M1)</option>
-              <option value="swing">🔄 Swing (H4→H1→M15→M5→M1)</option>
-              <option value="daily" selected>📅 Daily (D1→H4→H1→M15→M5→M1)</option>
-            </select>
-          </div>
-        </div>
-        
-        <div class="info" id="status">🔄 Loading market data...</div>
-      </div>
-      
-      <div class="controls">
-        <button class="size-btn" onclick="setPyramidSize('small')">📱 Compact</button>
-        <button class="size-btn active" onclick="setPyramidSize('medium')">📊 Standard</button>
-        <button class="size-btn" onclick="setPyramidSize('large')">🖥️ Detailed</button>
-      </div>
-      
-      <div class="update-info" id="updateInfo"></div>
-      <div class="pyramid medium" id="pyramid"></div>
-    </div>
+// Analysis state
+let currentAnalysis = {};
+let activeAlerts = [];
+let alertSettings = {
+    rsiAlerts: true,
+    priceAlerts: false,
+    volumeAlerts: true,
+    momentumAlerts: true
+};
 
-    <div id="chart-tab" class="tab-content">
-      <div class="chart-container">
-        <div class="chart-controls">
-          <!-- Timeframe Selection -->
-          <select id="timeframeSelect" class="timeframe-select" onchange="updateChartTimeframe()">
-            <option value="M1">M1</option>
-            <option value="M5">M5</option>
-            <option value="M15">M15</option>
-            <option value="H1" selected>H1</option>
-            <option value="H4">H4</option>
-            <option value="D1">D1</option>
-          </select>
-          
-          <!-- Chart Type -->
-          <div class="chart-type-section">
-            <select id="chartTypeSelect" class="chart-type-select" onchange="setChartType(this.value)">
-              <option value="line">📈 Line</option>
-              <option value="area">🟦 Area</option>
-              <option value="trend">🎯 Bull/Bear Trend</option>
-              <option value="candlestick">🕯️ Candlestick</option>
-            </select>
-            
-            <!-- Dynamic Color Pickers -->
-            <div id="colorPickers" class="color-pickers">
-              <!-- Color pickers will be dynamically shown based on chart type -->
-            </div>
-          </div>
-          
-          <!-- Chart Controls -->
-          <button class="control-btn" id="crosshairBtn" onclick="toggleCrosshair()">⊕</button>
-          <button class="control-btn" onclick="downloadChart()">💾 Save</button>
-          <button class="control-btn" onclick="zoomIn()">🔍</button>
+// Gauge state with placeholder values
+let gaugeValues = {
+    momentum: -45,    // Bearish momentum
+    volatility: 68,   // High volatility
+    strength: 82,     // Strong trend
+    risk: 35          // Low risk
+};
+
+// Professional Gauge Configuration
+const GAUGE_CONFIGS = {
+    momentum: {
+        minValue: -100,
+        maxValue: 100,
+        minAngle: -135,
+        maxAngle: 135,
+        thresholds: [-100, -50, -20, 20, 50, 100],
+        labels: ['Strong Bear', 'Bearish', 'Slight Bear', 'Slight Bull', 'Bullish', 'Strong Bull'],
+        colors: ['#DC2626', '#EF4444', '#F59E0B', '#22C55E', '#16A34A', '#15803D'],
+        classes: ['bearish', 'bearish', 'neutral', 'neutral', 'bullish', 'bullish']
+    },
+    volatility: {
+        minValue: 0,
+        maxValue: 100,
+        minAngle: -135,
+        maxAngle: 135,
+        thresholds: [0, 20, 40, 60, 80, 100],
+        labels: ['Very Low', 'Low', 'Medium', 'High', 'Very High', 'Extreme'],
+        colors: ['#00D394', '#22C55E', '#EAB308', '#F97316', '#EF4444', '#DC2626'],
+        classes: ['low', 'low', 'medium', 'high', 'high', 'high']
+    },
+    strength: {
+        minValue: 0,
+        maxValue: 100,
+        minAngle: -135,
+        maxAngle: 135,
+        thresholds: [0, 20, 40, 60, 80, 100],
+        labels: ['Very Weak', 'Weak', 'Moderate', 'Strong', 'Very Strong', 'Extreme'],
+        colors: ['#DC2626', '#EF4444', '#EAB308', '#22C55E', '#00D394', '#00B378'],
+        classes: ['weak', 'weak', 'moderate', 'strong', 'strong', 'strong']
+    },
+    risk: {
+        minValue: 0,
+        maxValue: 100,
+        minAngle: -135,
+        maxAngle: 135,
+        thresholds: [0, 25, 50, 75, 100],
+        labels: ['Very Low', 'Low', 'Medium', 'High', 'Very High'],
+        colors: ['#22C55E', '#10B981', '#EAB308', '#F97316', '#EF4444', '#DC2626'],
+        classes: ['low', 'low', 'medium', 'high', 'high']
+    }
+};
+
+// Initialize analysis & alerts module
+function initializeAnalysisAlerts() {
+    console.log("📊🔔 Enhanced Analysis & Alerts module initialized");
+    loadAlertSettings();
+    initializeProfessionalGauges();
+    initializeEnhancedAnalysis();
+    renderAnalysisSections();
+    renderAlertsSections();
     
-          <button class="control-btn" onclick="resetZoom()">🔄</button>
-          
-          <!-- Current Price Display -->
-          <span class="current-price" id="currentPrice">--</span>
-          <span class="chart-status" id="chartStatus">Select TF</span>
-        </div>
+    // Mark as initialized
+    const gaugesContainer = document.getElementById('gauges-container');
+    if (gaugesContainer) {
+        gaugesContainer.setAttribute('data-initialized', 'true');
+    }
+}
+
+// ==================== PROFESSIONAL GAUGE SYSTEM ====================
+
+// Get gauge configuration based on type and value
+function getGaugeConfig(type, value) {
+    const config = GAUGE_CONFIGS[type];
+    if (!config) return { label: 'Unknown', class: 'neutral', color: '#9CA3AF' };
+
+    for (let i = 0; i < config.thresholds.length - 1; i++) {
+        if (value >= config.thresholds[i] && value < config.thresholds[i + 1]) {
+            return {
+                label: config.labels[i],
+                class: config.classes[i],
+                color: config.colors[i]
+            };
+        }
+    }
+    
+    return {
+        label: config.labels[config.labels.length - 1],
+        class: config.classes[config.classes.length - 1],
+        color: config.colors[config.colors.length - 1]
+    };
+}
+
+// Calculate rotation angle based on value and gauge type
+function calculateRotation(type, value) {
+    const config = GAUGE_CONFIGS[type];
+    if (!config) return -135;
+    
+    const range = config.maxValue - config.minValue;
+    const angleRange = config.maxAngle - config.minAngle;
+    return ((value - config.minValue) / range) * angleRange + config.minAngle;
+}
+
+// Generate arc fill based on gauge type and value
+function generateArcFill(type, value) {
+    const config = GAUGE_CONFIGS[type];
+    if (!config) return 'transparent';
+    
+    // For momentum gauge - full arc always visible
+    if (type === 'momentum') {
+        return `conic-gradient(from -135deg,
+            #DC2626 0deg, #EF4444 45deg, #F59E0B 90deg, 
+            #22C55E 135deg, #16A34A 180deg, #15803D 225deg,
+            transparent 270deg, transparent 360deg)`;
+    }
+    
+    // For other gauges - partial fill based on value
+    const fillDeg = (value / config.maxValue) * 270;
+    
+    if (type === 'risk') {
+        return `conic-gradient(from -135deg,
+            transparent 0deg,
+            #22C55e 0deg, #10B981 60deg, #EAB308 120deg,
+            #F97316 180deg, #EF4444 240deg, #DC2626 ${fillDeg}deg,
+            transparent ${fillDeg}deg)`;
+    }
+    
+    if (type === 'volatility') {
+        return `conic-gradient(from -135deg,
+            transparent 0deg,
+            #00D394 0deg, #22C55E 60deg, #EAB308 120deg,
+            #F97316 180deg, #EF4444 240deg, #DC2626 ${fillDeg}deg,
+            transparent ${fillDeg}deg)`;
+    }
+    
+    if (type === 'strength') {
+        return `conic-gradient(from -135deg,
+            transparent 0deg,
+            #DC2626 0deg, #EF4444 60deg, #EAB308 120deg,
+            #22C55E 180deg, #00D394 240deg, #00B378 ${fillDeg}deg,
+            transparent ${fillDeg}deg)`;
+    }
+    
+    return 'transparent';
+}
+
+// Enhanced professional gauge update function
+function updateProfessionalGauge(type, value) {
+    const needle = document.getElementById(`${type}-needle`);
+    const scoreEl = document.getElementById(`${type}-score`);
+    const labelEl = document.getElementById(`${type}-label`);
+    const arcFillEl = document.getElementById(`${type}-arc`);
+    const indicatorEl = document.querySelector(`#${type}-indicator`);
+    const gaugeItem = document.getElementById(`${type}-gauge`);
+
+    if (!needle || !scoreEl || !labelEl || !arcFillEl || !indicatorEl) {
+        console.warn(`Gauge elements for ${type} not found`);
+        return;
+    }
+
+    // Remove all state classes first
+    gaugeItem.classList.remove('extreme', 'updating', 'risk-high', 'risk-medium', 'risk-low');
+    labelEl.className = 'gauge-label';
+    indicatorEl.className = 'gauge-indicator-dot';
+
+    // Add updating state
+    gaugeItem.classList.add('updating');
+
+    // 1. Needle rotation
+    const rotation = calculateRotation(type, value);
+    needle.style.transform = `translateX(-50%) rotate(${rotation}deg)`;
+
+    // 2. Update score with smooth counting
+    const currentValue = parseFloat(scoreEl.textContent) || 0;
+    animateValue(scoreEl, currentValue, value, 800);
+
+    // 3. Update arc fill
+    arcFillEl.style.background = generateArcFill(type, value);
+
+    // 4. Update label and indicator with CSS classes
+    const gaugeConfig = getGaugeConfig(type, value);
+    labelEl.textContent = gaugeConfig.label;
+    labelEl.classList.add(gaugeConfig.class);
+    indicatorEl.classList.add(gaugeConfig.class);
+
+    // 5. Add extreme effects for values at boundaries
+    if ((type === 'momentum' && (value >= 80 || value <= -80)) ||
+        (type !== 'momentum' && (value >= 90 || value <= 10))) {
+        gaugeItem.classList.add('extreme');
+    }
+
+    // 6. Special handling for risk gauge pulsing
+    if (type === 'risk' && value >= 75) {
+        gaugeItem.classList.add('risk-high');
+    } else if (type === 'risk' && value >= 50) {
+        gaugeItem.classList.add('risk-medium');
+    } else if (type === 'risk' && value <= 25) {
+        gaugeItem.classList.add('risk-low');
+    }
+
+    // Remove updating state after animation
+    setTimeout(() => {
+        gaugeItem.classList.remove('updating');
+    }, 800);
+}
+
+// Smooth value counting animation
+function animateValue(element, start, end, duration) {
+    const startTime = performance.now();
+    const change = end - start;
+
+    function updateValue(currentTime) {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
         
-        <div class="chart-area">
-          <!-- Enhanced Indicators Panel -->
-          <div class="indicators-panel collapsed" id="indicatorsPanel">
-            <div class="panel-header">
-              <span class="panel-emoji" onclick="toggleIndicatorsPanel()">📊</span>
-              <h3 onclick="toggleIndicatorsPanel()">Indicators & Settings</h3>
-            </div>
-            
-            <!-- Indicators Dropdown -->
-            <div class="indicators-dropdown-section">
-              <select id="indicatorsDropdown" class="indicators-dropdown" onchange="addIndicatorFromDropdown(this.value)">
-                <option value="">+ Add Indicator</option>
-                <option value="sma">SMA</option>
-                <option value="ema">EMA</option>
-                <option value="rsi">RSI</option>
-                <option value="macd">MACD</option>
-                <option value="bollinger">Bollinger</option>
-                <option value="stochastic">Stochastic</option>
-                <option value="supportresistance">Support/Resistance</option>
-              </select>
-            </div>
-            
-            <!-- Active Indicators List -->
-            <div class="indicators-list" id="indicatorsList">
-              <!-- Active indicators with settings will be added here -->
-            </div>
-          </div>
-          
-          <!-- Main Chart Canvas with Axis Indicators Container -->
-          <div class="chart-wrapper">
-            <canvas id="mainChart"></canvas>
-            <!-- Axis Indicators will be dynamically inserted here -->
-          </div>
-        </div>
-      </div>
-    </div>
+        // Easing function for smooth counting
+        const easeOut = 1 - Math.pow(1 - progress, 3);
+        const currentValue = type === 'momentum' ? 
+            Math.round(start + change * easeOut) : 
+            Math.round(start + change * easeOut);
+        
+        element.textContent = currentValue;
 
-    <div id="analysis-tab" class="tab-content">
-      <!-- Professional Gauges Container -->
-      <div class="gauges-container" id="gauges-container" data-initialized="false">
-        <div class="gauge-row">
-          <!-- Momentum Gauge -->
-          <div class="gauge-item" id="momentum-gauge" data-gauge-type="momentum">
-            <div class="gauge-title">Momentum</div>
-            <div class="gauge-container">
-              <div class="gauge-arc">
-                <div class="gauge-arc-fill" id="momentum-arc"></div>
-              </div>
-              <div class="gauge-hub"></div>
-              <div class="gauge-needle-container">
-                <div class="gauge-needle" id="momentum-needle">
-                  <div class="needle-head"></div>
+        if (progress < 1) {
+            requestAnimationFrame(updateValue);
+        }
+    }
+
+    requestAnimationFrame(updateValue);
+}
+
+// Initialize gauges with placeholder values
+function initializeProfessionalGauges() {
+    console.log("🎯 Initializing professional gauges with placeholder values...");
+    
+    // Set initial values for all gauges with slight delay for visual effect
+    setTimeout(() => {
+        updateProfessionalGauge('momentum', gaugeValues.momentum);
+        updateProfessionalGauge('volatility', gaugeValues.volatility);
+        updateProfessionalGauge('strength', gaugeValues.strength);
+        updateProfessionalGauge('risk', gaugeValues.risk);
+        
+        console.log("✅ Professional gauges initialized with placeholders");
+    }, 500);
+}
+
+// Update all gauges
+function updateAllProfessionalGauges(values) {
+    if (!values) {
+        console.warn("No values provided to update gauges");
+        return;
+    }
+    
+    console.log("🔄 Updating all gauges with values:", values);
+    
+    // Update gauge values state
+    gaugeValues = { ...gaugeValues, ...values };
+    
+    updateProfessionalGauge('momentum', gaugeValues.momentum);
+    updateProfessionalGauge('volatility', gaugeValues.volatility);
+    updateProfessionalGauge('strength', gaugeValues.strength);
+    updateProfessionalGauge('risk', gaugeValues.risk);
+}
+
+// ==================== CONFLUENCE CALCULATION ENGINE ====================
+
+// Calculate confluence from pyramid data
+function calculateConfluence(pyramidData) {
+    if (!pyramidData || !pyramidData.blocks) {
+        console.warn("No pyramid data available for confluence calculation");
+        return gaugeValues;
+    }
+    
+    console.log("🧮 Calculating market confluence...");
+    
+    const analysis = {
+        timeframeMomentum: [],
+        timeframeVolatility: [],
+        indicatorConsensus: [],
+        volumeAnalysis: []
+    };
+    
+    // Analyze each timeframe block
+    pyramidData.blocks.forEach(block => {
+        const blockAnalysis = analyzeTimeframeBlock(block);
+        analysis.timeframeMomentum.push(blockAnalysis.momentum);
+        analysis.timeframeVolatility.push(blockAnalysis.volatility);
+        analysis.indicatorConsensus.push(blockAnalysis.indicatorScore);
+        analysis.volumeAnalysis.push(blockAnalysis.volumeStrength);
+    });
+    
+    // Calculate gauge values
+    gaugeValues.momentum = calculateMomentumConfluence(analysis.timeframeMomentum);
+    gaugeValues.volatility = calculateVolatilityConfluence(analysis.timeframeVolatility);
+    gaugeValues.strength = calculateStrengthConfluence(analysis);
+    gaugeValues.risk = calculateRiskAssessment(analysis);
+    
+    console.log("📈 Calculated gauge values:", gaugeValues);
+    
+    updateAllProfessionalGauges(gaugeValues);
+    return gaugeValues;
+}
+
+// Analyze individual timeframe block
+function analyzeTimeframeBlock(block) {
+    const analysis = {
+        momentum: 0,
+        volatility: 0,
+        indicatorScore: 0,
+        volumeStrength: 0
+    };
+    
+    // Momentum analysis (from block data)
+    if (block.dir === '🟢') analysis.momentum = 1;
+    else if (block.dir === '🔴') analysis.momentum = -1;
+    
+    // Volatility analysis (placeholder - would use ATR data)
+    analysis.volatility = Math.random() * 100; // Replace with real ATR calculation
+    
+    // Indicator consensus (from momentum summary)
+    analysis.indicatorScore = analyzeMomentumSummary(block.momentum_summary);
+    
+    // Volume strength (from volume data)
+    analysis.volumeStrength = block.volume > 1000 ? 1 : 0.5;
+    
+    return analysis;
+}
+
+// Analyze momentum summary text
+function analyzeMomentumSummary(summary) {
+    if (!summary) return 50;
+    
+    let score = 50;
+    
+    // Basic sentiment analysis from summary text
+    if (summary.includes('Strong') || summary.includes('++')) score += 25;
+    if (summary.includes('Weak') || summary.includes('--')) score -= 25;
+    if (summary.includes('🟢')) score += 15;
+    if (summary.includes('🔴')) score -= 15;
+    
+    return Math.max(0, Math.min(100, score));
+}
+
+// Calculate momentum confluence
+function calculateMomentumConfluence(momentumScores) {
+    if (momentumScores.length === 0) return 50;
+    
+    // Weight recent timeframes more heavily
+    const weights = [0.3, 0.25, 0.2, 0.15, 0.1]; // D1, H4, H1, M15, M5 weights
+    let weightedSum = 0;
+    let totalWeight = 0;
+    
+    momentumScores.forEach((score, index) => {
+        const weight = weights[index] || 0.1;
+        weightedSum += (score + 1) * 50 * weight; // Convert -1/1 to 0-100 scale
+        totalWeight += weight;
+    });
+    
+    return Math.round(weightedSum / totalWeight);
+}
+
+// Calculate volatility confluence
+function calculateVolatilityConfluence(volatilityScores) {
+    if (volatilityScores.length === 0) return 50;
+    return Math.round(volatilityScores.reduce((a, b) => a + b, 0) / volatilityScores.length);
+}
+
+// Calculate strength confluence
+function calculateStrengthConfluence(analysis) {
+    const momentumStrength = gaugeValues.momentum;
+    const consensusStrength = analysis.indicatorConsensus.reduce((a, b) => a + b, 0) / analysis.indicatorConsensus.length;
+    const volumeStrength = analysis.volumeAnalysis.reduce((a, b) => a + b, 0) / analysis.volumeAnalysis.length * 100;
+    
+    // Weighted average of all strength factors
+    return Math.round(
+        (momentumStrength * 0.4) + 
+        (consensusStrength * 0.4) + 
+        (volumeStrength * 0.2)
+    );
+}
+
+// Calculate risk assessment
+function calculateRiskAssessment(analysis) {
+    const volatilityRisk = gaugeValues.volatility > 70 ? 80 : gaugeValues.volatility > 30 ? 50 : 20;
+    const momentumRisk = Math.abs(gaugeValues.momentum - 50) > 30 ? 70 : 40;
+    const consensusRisk = analysis.indicatorConsensus.some(score => score < 30) ? 60 : 30;
+    
+    return Math.round((volatilityRisk + momentumRisk + consensusRisk) / 3);
+}
+
+// ==================== ENHANCED ANALYSIS COMPONENTS ====================
+
+// Initialize enhanced analysis components
+function initializeEnhancedAnalysis() {
+    console.log("📊 Initializing enhanced analysis components...");
+    // Components are already in HTML, just ensure they're ready
+}
+
+// Update all enhanced analysis components
+function updateEnhancedAnalysis(pyramidData, chartData) {
+    if (!pyramidData) {
+        console.warn("No pyramid data for enhanced analysis");
+        return;
+    }
+    
+    updateMultiTimeframeStrength(pyramidData);
+    updateIndicatorConsensus(pyramidData);
+    updateMarketStructure(chartData);
+    updateTradingSetups(pyramidData, chartData);
+    updateVolumeAnalysis(pyramidData);
+}
+
+// Update multi-timeframe strength bars
+function updateMultiTimeframeStrength(pyramidData) {
+    const container = document.getElementById('timeframe-strength-container');
+    if (!container || !pyramidData.blocks) return;
+    
+    let strengthHTML = '';
+    pyramidData.blocks.forEach((block, index) => {
+        const strength = calculateTimeframeStrength(block);
+        const strengthPercent = Math.round(strength * 100);
+        const strengthClass = getStrengthClass(strengthPercent);
+        
+        strengthHTML += `
+            <div class="timeframe-strength-item">
+                <div class="timeframe-label">${block.tf}</div>
+                <div class="strength-bar-container">
+                    <div class="strength-bar">
+                        <div class="strength-fill ${strengthClass}" style="width: ${strengthPercent}%"></div>
+                    </div>
+                    <div class="strength-value ${strengthClass}">${strengthPercent}%</div>
                 </div>
-              </div>
-              <div class="gauge-value-container">
-                <div class="gauge-score" id="momentum-score">-45</div>
-                <div class="gauge-unit">pts</div>
-              </div>
-              <div class="gauge-label-container">
-                <div class="gauge-label bearish" id="momentum-label">Bearish</div>
-                <div class="gauge-indicator-dot bearish" id="momentum-indicator"></div>
-              </div>
-            </div>
-          </div>
-          
-          <!-- Volatility Gauge -->
-          <div class="gauge-item" id="volatility-gauge" data-gauge-type="volatility">
-            <div class="gauge-title">Volatility</div>
-            <div class="gauge-container">
-              <div class="gauge-arc">
-                <div class="gauge-arc-fill" id="volatility-arc"></div>
-              </div>
-              <div class="gauge-hub"></div>
-              <div class="gauge-needle-container">
-                <div class="gauge-needle" id="volatility-needle">
-                  <div class="needle-head"></div>
+                <div class="timeframe-direction ${block.dir === '🟢' ? 'bullish' : 'bearish'}">
+                    ${block.dir}
                 </div>
-              </div>
-              <div class="gauge-value-container">
-                <div class="gauge-score" id="volatility-score">68</div>
-                <div class="gauge-unit">%</div>
-              </div>
-              <div class="gauge-label-container">
-                <div class="gauge-label high" id="volatility-label">High</div>
-                <div class="gauge-indicator-dot high" id="volatility-indicator"></div>
-              </div>
             </div>
-          </div>
-          
-          <!-- Strength Gauge -->
-          <div class="gauge-item" id="strength-gauge" data-gauge-type="strength">
-            <div class="gauge-title">Strength</div>
-            <div class="gauge-container">
-              <div class="gauge-arc">
-                <div class="gauge-arc-fill" id="strength-arc"></div>
-              </div>
-              <div class="gauge-hub"></div>
-              <div class="gauge-needle-container">
-                <div class="gauge-needle" id="strength-needle">
-                  <div class="needle-head"></div>
+        `;
+    });
+    
+    container.innerHTML = strengthHTML;
+}
+
+// Update indicator consensus
+function updateIndicatorConsensus(pyramidData) {
+    const consensus = calculateIndicatorConsensus(pyramidData);
+    
+    // Update trend consensus
+    const trendFill = document.getElementById('trend-consensus-fill');
+    const trendValue = document.getElementById('trend-consensus-value');
+    if (trendFill && trendValue) {
+        trendFill.style.width = consensus.trend + '%';
+        trendValue.textContent = consensus.trend + '%';
+    }
+    
+    // Update momentum consensus
+    const momentumFill = document.getElementById('momentum-consensus-fill');
+    const momentumValue = document.getElementById('momentum-consensus-value');
+    if (momentumFill && momentumValue) {
+        momentumFill.style.width = consensus.momentum + '%';
+        momentumValue.textContent = consensus.momentum + '%';
+    }
+    
+    // Update volatility consensus
+    const volatilityFill = document.getElementById('volatility-consensus-fill');
+    const volatilityValue = document.getElementById('volatility-consensus-value');
+    if (volatilityFill && volatilityValue) {
+        volatilityFill.style.width = consensus.volatility + '%';
+        volatilityValue.textContent = consensus.volatility + '%';
+    }
+    
+    // Update consensus summary
+    const summaryElement = document.getElementById('consensus-summary');
+    if (summaryElement) {
+        const overallConsensus = Math.round((consensus.trend + consensus.momentum + consensus.volatility) / 3);
+        const consensusClass = getConsensusClass(overallConsensus);
+        summaryElement.innerHTML = `
+            <div class="consensus-status ${consensusClass}">
+                Overall Consensus: ${overallConsensus}% - ${getConsensusText(overallConsensus)}
+            </div>
+        `;
+    }
+}
+
+// Update market structure
+function updateMarketStructure(chartData) {
+    const structure = analyzeMarketStructure(chartData);
+    
+    // Update resistance levels
+    const resistanceElement = document.getElementById('resistance-levels');
+    if (resistanceElement) {
+        resistanceElement.innerHTML = structure.resistanceLevels.map(level => 
+            `<div class="level-item resistance">${level.toFixed(5)}</div>`
+        ).join('');
+    }
+    
+    // Update support levels
+    const supportElement = document.getElementById('support-levels');
+    if (supportElement) {
+        supportElement.innerHTML = structure.supportLevels.map(level => 
+            `<div class="level-item support">${level.toFixed(5)}</div>`
+        ).join('');
+    }
+    
+    // Update trend information
+    const primaryTrend = document.getElementById('primary-trend');
+    const trendStrengthFill = document.getElementById('trend-strength-fill');
+    
+    if (primaryTrend) {
+        primaryTrend.textContent = structure.primaryTrend;
+        primaryTrend.className = `trend-value ${structure.primaryTrend.toLowerCase()}`;
+    }
+    
+    if (trendStrengthFill) {
+        trendStrengthFill.style.width = structure.trendStrength + '%';
+    }
+}
+
+// Update trading setups
+function updateTradingSetups(pyramidData, chartData) {
+    const setups = generateTradingSetups(pyramidData, chartData);
+    const container = document.getElementById('setup-cards');
+    if (!container) return;
+    
+    if (setups.length === 0) {
+        container.innerHTML = '<div class="no-setups">No high-probability setups detected</div>';
+        return;
+    }
+    
+    container.innerHTML = setups.map(setup => `
+        <div class="setup-card ${setup.direction}">
+            <div class="setup-header">
+                <span class="setup-type">${setup.type}</span>
+                <span class="setup-confidence ${getConfidenceClass(setup.confidence)}">
+                    ${setup.confidence}%
+                </span>
+            </div>
+            <div class="setup-details">
+                <div class="setup-direction ${setup.direction}">${setup.direction.toUpperCase()}</div>
+                <div class="setup-metrics">
+                    <div class="setup-metric">
+                        <span>R:R</span>
+                        <span>${setup.riskReward}</span>
+                    </div>
+                    <div class="setup-metric">
+                        <span>Stop Loss</span>
+                        <span>${setup.stopLoss}</span>
+                    </div>
+                    <div class="setup-metric">
+                        <span>Target</span>
+                        <span>${setup.target}</span>
+                    </div>
                 </div>
-              </div>
-              <div class="gauge-value-container">
-                <div class="gauge-score" id="strength-score">82</div>
-                <div class="gauge-unit">%</div>
-              </div>
-              <div class="gauge-label-container">
-                <div class="gauge-label strong" id="strength-label">Strong</div>
-                <div class="gauge-indicator-dot strong" id="strength-indicator"></div>
-              </div>
             </div>
-          </div>
-          
-          <!-- Risk Gauge -->
-          <div class="gauge-item" id="risk-gauge" data-gauge-type="risk">
-            <div class="gauge-title">Risk</div>
-            <div class="gauge-container">
-              <div class="gauge-arc">
-                <div class="gauge-arc-fill" id="risk-arc"></div>
-              </div>
-              <div class="gauge-hub"></div>
-              <div class="gauge-needle-container">
-                <div class="gauge-needle" id="risk-needle">
-                  <div class="needle-head"></div>
+        </div>
+    `).join('');
+}
+
+// Update volume analysis
+function updateVolumeAnalysis(pyramidData) {
+    const volumeAnalysis = analyzeVolume(pyramidData);
+    
+    // Update volume metrics
+    const volumeTrend = document.getElementById('volume-trend');
+    const volumeVsAvg = document.getElementById('volume-vs-avg');
+    const volumeConfirmation = document.getElementById('volume-confirmation');
+    
+    if (volumeTrend) {
+        volumeTrend.textContent = volumeAnalysis.trend;
+        volumeTrend.className = `volume-value ${volumeAnalysis.trend.toLowerCase()}`;
+    }
+    
+    if (volumeVsAvg) {
+        volumeVsAvg.textContent = volumeAnalysis.vsAverage;
+    }
+    
+    if (volumeConfirmation) {
+        volumeConfirmation.textContent = volumeAnalysis.confirmation;
+        volumeConfirmation.className = `volume-value ${volumeAnalysis.confirmation.toLowerCase()}`;
+    }
+    
+    // Update volume bars
+    const volumeD1 = document.getElementById('volume-d1');
+    const volumeH4 = document.getElementById('volume-h4');
+    const volumeH1 = document.getElementById('volume-h1');
+    const volumeM15 = document.getElementById('volume-m15');
+    
+    if (volumeD1) volumeD1.style.height = volumeAnalysis.timeframes.D1 + '%';
+    if (volumeH4) volumeH4.style.height = volumeAnalysis.timeframes.H4 + '%';
+    if (volumeH1) volumeH1.style.height = volumeAnalysis.timeframes.H1 + '%';
+    if (volumeM15) volumeM15.style.height = volumeAnalysis.timeframes.M15 + '%';
+}
+
+// ==================== ANALYSIS CALCULATIONS ====================
+
+// Calculate timeframe strength
+function calculateTimeframeStrength(block) {
+    // Simple strength calculation based on momentum summary
+    let strength = 0.5; // Default neutral
+    
+    if (block.momentum_summary) {
+        if (block.momentum_summary.includes('Strong')) strength = 0.8;
+        else if (block.momentum_summary.includes('Weak')) strength = 0.3;
+        
+        if (block.dir === '🟢') strength += 0.1;
+        else if (block.dir === '🔴') strength -= 0.1;
+    }
+    
+    return Math.max(0, Math.min(1, strength));
+}
+
+// Calculate indicator consensus
+function calculateIndicatorConsensus(pyramidData) {
+    // Simplified consensus calculation
+    return {
+        trend: Math.round(70 + Math.random() * 20), // Would use real indicator data
+        momentum: Math.round(60 + Math.random() * 30),
+        volatility: Math.round(50 + Math.random() * 40)
+    };
+}
+
+// Analyze market structure (placeholder - would use real chart data)
+function analyzeMarketStructure(chartData) {
+    return {
+        resistanceLevels: [1.0950, 1.0975, 1.1000],
+        supportLevels: [1.0900, 1.0880, 1.0850],
+        primaryTrend: 'Bullish',
+        trendStrength: 75
+    };
+}
+
+// Generate trading setups (placeholder)
+function generateTradingSetups(pyramidData, chartData) {
+    const setups = [];
+    
+    // Example setup based on gauge values
+    if (gaugeValues.momentum > 70) {
+        setups.push({
+            type: 'Momentum Breakout',
+            direction: 'long',
+            confidence: 75,
+            riskReward: '1:2.5',
+            stopLoss: '1.0880',
+            target: '1.1020'
+        });
+    }
+    
+    if (gaugeValues.momentum < 30) {
+        setups.push({
+            type: 'Momentum Reversal',
+            direction: 'short',
+            confidence: 65,
+            riskReward: '1:2.0',
+            stopLoss: '1.0950',
+            target: '1.0850'
+        });
+    }
+    
+    return setups;
+}
+
+// Analyze volume (placeholder)
+function analyzeVolume(pyramidData) {
+    return {
+        trend: 'Increasing',
+        vsAverage: '+25%',
+        confirmation: 'Strong',
+        timeframes: {
+            D1: 80,
+            H4: 65,
+            H1: 45,
+            M15: 30
+        }
+    };
+}
+
+// ==================== ENHANCED ANALYSIS DISPLAY ====================
+
+// Update analysis data with confluence calculation
+function updateAnalysis(data) {
+    if (!data) {
+        console.warn("No data provided to update analysis");
+        return;
+    }
+    
+    currentAnalysis = data;
+    
+    // Calculate confluence if we have pyramid data
+    if (data.blocks) {
+        calculateConfluence(data);
+        updateEnhancedAnalysis(data, {});
+    }
+    
+    renderTechnicalSummary(data);
+    renderTradingSignals(data);
+    renderMarketStructure(data);
+    
+    // Check for alerts based on confluence
+    checkConfluenceAlerts();
+}
+
+// Enhanced technical summary with confluence
+function renderTechnicalSummary(data) {
+    const summaryElement = document.getElementById('technicalSummary');
+    if (!summaryElement) return;
+    
+    if (data.error) {
+        summaryElement.innerHTML = `<div class="error">${data.error}</div>`;
+        return;
+    }
+    
+    const momentumText = getMomentumText(gaugeValues.momentum);
+    const strengthText = getStrengthText(gaugeValues.strength);
+    const riskText = getRiskText(gaugeValues.risk);
+    
+    summaryElement.innerHTML = `
+        <div class="summary-content">
+            <div class="summary-item">
+                <span class="label">Market Confluence:</span>
+                <span class="value ${getMomentumClass(gaugeValues.momentum)}">${momentumText}</span>
+            </div>
+            <div class="summary-item">
+                <span class="label">Trend Strength:</span>
+                <span class="value ${getStrengthClass(gaugeValues.strength)}">${strengthText}</span>
+            </div>
+            <div class="summary-item">
+                <span class="label">Risk Level:</span>
+                <span class="value ${getRiskClass(gaugeValues.risk)}">${riskText}</span>
+            </div>
+            ${data.technical_summary ? `
+            <div class="summary-item">
+                <span class="label">Latest Signal:</span>
+                <span class="value">${data.technical_summary}</span>
+            </div>
+            ` : ''}
+        </div>
+    `;
+}
+
+// Render trading signals
+function renderTradingSignals(data) {
+    const signalsElement = document.getElementById('tradingSignals');
+    if (!signalsElement) return;
+    
+    if (data.error || !data.trading_signals) {
+        signalsElement.innerHTML = '<div class="no-signals">No signals available</div>';
+        return;
+    }
+    
+    let signalsHTML = '';
+    data.trading_signals.forEach((signal, index) => {
+        const signalType = getSignalType(signal);
+        signalsHTML += `
+            <div class="signal-item ${signalType}">
+                <div class="signal-icon">${getSignalIcon(signalType)}</div>
+                <div class="signal-content">
+                    <div class="signal-text">${signal}</div>
+                    <div class="signal-meta">${new Date().toLocaleTimeString()}</div>
                 </div>
-              </div>
-              <div class="gauge-value-container">
-                <div class="gauge-score" id="risk-score">35</div>
-                <div class="gauge-unit">%</div>
-              </div>
-              <div class="gauge-label-container">
-                <div class="gauge-label low" id="risk-label">Low</div>
-                <div class="gauge-indicator-dot low" id="risk-indicator"></div>
-              </div>
             </div>
-          </div>
+        `;
+    });
+    
+    signalsElement.innerHTML = signalsHTML || '<div class="no-signals">No active signals</div>';
+}
+
+// Render market structure
+function renderMarketStructure(data) {
+    const structureElement = document.getElementById('marketStructure');
+    if (!structureElement) return;
+    
+    if (data.error || !data.market_structure) {
+        structureElement.innerHTML = '<div class="no-data">Market structure data unavailable</div>';
+        return;
+    }
+    
+    structureElement.innerHTML = `
+        <div class="structure-content">
+            <div class="structure-item">
+                <span class="label">Timeframe Analysis:</span>
+                <span class="value">${data.market_structure}</span>
+            </div>
         </div>
-      </div>
+    `;
+}
 
-      <!-- Multi-Timeframe Strength -->
-      <div class="analysis-section" id="timeframe-strength-section">
-        <h3>📈 Multi-Timeframe Strength</h3>
-        <div class="timeframe-strength-container" id="timeframe-strength-container">
-          <!-- Timeframe strength bars will be populated here -->
-        </div>
-      </div>
+// ==================== ALERT SYSTEM ENHANCEMENTS ====================
 
-      <!-- Indicator Consensus -->
-      <div class="analysis-section" id="indicator-consensus-section">
-        <h3>🎯 Indicator Consensus</h3>
-        <div class="consensus-container" id="consensus-container">
-          <div class="consensus-meters">
-            <div class="consensus-meter">
-              <div class="meter-label">Trend Indicators</div>
-              <div class="meter-bar">
-                <div class="meter-fill" id="trend-consensus-fill" style="width: 0%"></div>
-              </div>
-              <div class="meter-value" id="trend-consensus-value">0%</div>
-            </div>
-            <div class="consensus-meter">
-              <div class="meter-label">Momentum Indicators</div>
-              <div class="meter-bar">
-                <div class="meter-fill" id="momentum-consensus-fill" style="width: 0%"></div>
-              </div>
-              <div class="meter-value" id="momentum-consensus-value">0%</div>
-            </div>
-            <div class="consensus-meter">
-              <div class="meter-label">Volatility Indicators</div>
-              <div class="meter-bar">
-                <div class="meter-fill" id="volatility-consensus-fill" style="width: 0%"></div>
-              </div>
-              <div class="meter-value" id="volatility-consensus-value">0%</div>
-            </div>
-          </div>
-          <div class="consensus-summary" id="consensus-summary">
-            <div class="consensus-status">Analyzing indicator alignment...</div>
-          </div>
-        </div>
-      </div>
+// Check for confluence-based alerts
+function checkConfluenceAlerts() {
+    if (!alertSettings.momentumAlerts) return;
+    
+    // High momentum alert
+    if (gaugeValues.momentum >= 80) {
+        createAlert('momentum', `Strong bullish confluence detected (${gaugeValues.momentum}%)`, 'high');
+    } else if (gaugeValues.momentum <= -80) {
+        createAlert('momentum', `Strong bearish confluence detected (${gaugeValues.momentum}%)`, 'high');
+    }
+    
+    // High volatility alert
+    if (gaugeValues.volatility >= 80) {
+        createAlert('volatility', `High market volatility detected (${gaugeValues.volatility}%)`, 'medium');
+    }
+    
+    // High risk alert
+    if (gaugeValues.risk >= 80) {
+        createAlert('risk', `Elevated market risk level (${gaugeValues.risk}%)`, 'high');
+    }
+}
 
-      <!-- Market Structure -->
-      <div class="analysis-section" id="market-structure-section">
-        <h3>🏗️ Market Structure</h3>
-        <div class="structure-container" id="structure-container">
-          <div class="structure-levels">
-            <div class="levels-group">
-              <h4>Resistance Levels</h4>
-              <div class="levels-list" id="resistance-levels">
-                <!-- Resistance levels will be populated here -->
-              </div>
-            </div>
-            <div class="levels-group">
-              <h4>Support Levels</h4>
-              <div class="levels-list" id="support-levels">
-                <!-- Support levels will be populated here -->
-              </div>
-            </div>
-          </div>
-          <div class="structure-trend">
-            <div class="trend-indicator">
-              <span class="trend-label">Primary Trend:</span>
-              <span class="trend-value" id="primary-trend">Analyzing...</span>
-            </div>
-            <div class="trend-strength">
-              <span class="trend-label">Trend Strength:</span>
-              <div class="trend-bar">
-                <div class="trend-fill" id="trend-strength-fill" style="width: 0%"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+// ==================== ALERT MANAGEMENT ====================
 
-      <!-- Trading Setups -->
-      <div class="analysis-section" id="trading-setup-section">
-        <h3>💰 Trading Setups</h3>
-        <div class="setups-container" id="setups-container">
-          <div class="setup-cards" id="setup-cards">
-            <!-- Trading setup cards will be populated here -->
-          </div>
-          <div class="setup-metrics">
-            <div class="metric-item">
-              <span class="metric-label">Avg. Risk/Reward:</span>
-              <span class="metric-value" id="avg-risk-reward">1:1.5</span>
-            </div>
-            <div class="metric-item">
-              <span class="metric-label">Success Probability:</span>
-              <span class="metric-value" id="success-probability">65%</span>
-            </div>
-            <div class="metric-item">
-              <span class="metric-label">Market Condition:</span>
-              <span class="metric-value" id="market-condition">Trending</span>
-            </div>
-          </div>
-        </div>
-      </div>
+// Toggle alert setting
+function toggleAlertSetting(setting, enabled) {
+    alertSettings[setting] = enabled;
+    saveAlertSettings();
+    console.log(`Alert setting ${setting} ${enabled ? 'enabled' : 'disabled'}`);
+}
 
-      <!-- Volume Analysis -->
-      <div class="analysis-section" id="volume-analysis-section">
-        <h3>📊 Volume Analysis</h3>
-        <div class="volume-container" id="volume-container">
-          <div class="volume-metrics">
-            <div class="volume-metric">
-              <div class="volume-label">Volume Trend</div>
-              <div class="volume-value" id="volume-trend">Neutral</div>
-            </div>
-            <div class="volume-metric">
-              <div class="volume-label">Volume vs Avg</div>
-              <div class="volume-value" id="volume-vs-avg">+15%</div>
-            </div>
-            <div class="volume-metric">
-              <div class="volume-label">Volume Confirmation</div>
-              <div class="volume-value" id="volume-confirmation">Strong</div>
-            </div>
-          </div>
-          <div class="volume-bars">
-            <div class="volume-bar-container">
-              <div class="volume-bar-label">D1</div>
-              <div class="volume-bar">
-                <div class="volume-bar-fill" id="volume-d1" style="height: 0%"></div>
-              </div>
-            </div>
-            <div class="volume-bar-container">
-              <div class="volume-bar-label">H4</div>
-              <div class="volume-bar">
-                <div class="volume-bar-fill" id="volume-h4" style="height: 0%"></div>
-              </div>
-            </div>
-            <div class="volume-bar-container">
-              <div class="volume-bar-label">H1</div>
-              <div class="volume-bar">
-                <div class="volume-bar-fill" id="volume-h1" style="height: 0%"></div>
-              </div>
-            </div>
-            <div class="volume-bar-container">
-              <div class="volume-bar-label">M15</div>
-              <div class="volume-bar">
-                <div class="volume-bar-fill" id="volume-m15" style="height: 0%"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+// Create new alert
+function createAlert(type, message, priority = 'medium') {
+    const alert = {
+        id: generateAlertId(),
+        type: type,
+        message: message,
+        priority: priority,
+        time: new Date().toLocaleTimeString(),
+        resolved: false
+    };
+    
+    activeAlerts.unshift(alert); // Add to beginning
+    if (activeAlerts.length > 50) {
+        activeAlerts.pop(); // Keep only last 50 alerts
+    }
+    
+    renderActiveAlerts();
+    showAlertNotification(alert);
+    
+    return alert;
+}
 
-      <!-- Technical Summary & Signals -->
-      <div class="analysis-section">
-        <h3>📊 Technical Summary</h3>
-        <div id="technicalSummary">Loading analysis...</div>
-      </div>
-      <div class="analysis-section">
-        <h3>🎯 Trading Signals</h3>
-        <div class="signal-list" id="tradingSignals"></div>
-      </div>
-    </div>
+// Resolve alert
+function resolveAlert(alertId) {
+    const alert = activeAlerts.find(a => a.id === alertId);
+    if (alert) {
+        alert.resolved = true;
+        alert.resolvedTime = new Date().toLocaleTimeString();
+        renderActiveAlerts();
+    }
+}
 
-    <div id="alerts-tab" class="tab-content">
-      <div class="alerts-container">
-        <div class="analysis-section">
-          <h3>🔔 Active Alerts</h3>
-          <div id="activeAlerts">
+// Clear all alerts
+function clearAllAlerts() {
+    activeAlerts = [];
+    renderActiveAlerts();
+}
+
+// Test alert system
+function testAlertSystem() {
+    createAlert('test', 'This is a test alert - system is working correctly', 'low');
+}
+
+// ==================== ALERT CHECKING ====================
+
+// Check for RSI alerts
+function checkRSIAlerts(rsiValue) {
+    if (!alertSettings.rsiAlerts) return;
+    
+    if (rsiValue > 70) {
+        createAlert('rsi', `RSI Overbought: ${rsiValue.toFixed(1)} - Potential sell signal`, 'high');
+    } else if (rsiValue < 30) {
+        createAlert('rsi', `RSI Oversold: ${rsiValue.toFixed(1)} - Potential buy signal`, 'high');
+    }
+}
+
+// Check for price alerts (placeholder)
+function checkPriceAlerts(currentPrice, symbol) {
+    if (!alertSettings.priceAlerts) return;
+    // Implementation would track key price levels
+}
+
+// Check for volume alerts (placeholder)
+function checkVolumeAlerts(currentVolume, averageVolume) {
+    if (!alertSettings.volumeAlerts) return;
+    
+    if (currentVolume > averageVolume * 2) {
+        createAlert('volume', `Volume spike detected: ${(currentVolume/averageVolume).toFixed(1)}x average`, 'medium');
+    }
+}
+
+// ==================== ALERT RENDERING ====================
+
+// Render alerts sections
+function renderAlertsSections() {
+    renderActiveAlerts();
+    renderAlertSettings();
+}
+
+// Render active alerts
+function renderActiveAlerts() {
+    const alertsElement = document.getElementById('activeAlerts');
+    if (!alertsElement) return;
+    
+    if (activeAlerts.length === 0) {
+        alertsElement.innerHTML = `
             <div class="no-alerts">
-              <div class="no-alerts-icon">🔕</div>
-              <div class="no-alerts-text">No active alerts</div>
-              <div class="no-alerts-subtext">Alerts will appear here when triggered</div>
+                <div class="no-alerts-icon">🔕</div>
+                <div class="no-alerts-text">No active alerts</div>
+                <div class="no-alerts-subtext">Alerts will appear here when triggered</div>
             </div>
-          </div>
-        </div>
-        <div class="analysis-section">
-          <h3>⚙️ Alert Settings</h3>
-          <div id="alertSettings">
-            <div class="alert-setting-group">
-              <div class="alert-setting-item">
-                <input type="checkbox" id="rsiAlert" checked onchange="toggleAlertSetting('rsiAlerts', this.checked)">
+        `;
+        return;
+    }
+    
+    let alertsHTML = '';
+    activeAlerts.forEach(alert => {
+        alertsHTML += `
+            <div class="alert-item ${alert.resolved ? 'resolved' : 'active'} ${alert.type}">
+                <div class="alert-header">
+                    <span class="alert-type">${alert.type}</span>
+                    <span class="alert-time">${alert.time}</span>
+                </div>
+                <div class="alert-message">${alert.message}</div>
+                ${!alert.resolved ? `
+                    <div class="alert-actions">
+                        <button class="alert-btn resolve" onclick="resolveAlert('${alert.id}')">
+                            Mark Resolved
+                        </button>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    });
+    
+    alertsElement.innerHTML = alertsHTML;
+}
+
+// Render alert settings
+function renderAlertSettings() {
+    const settingsElement = document.getElementById('alertSettings');
+    if (!settingsElement) return;
+    
+    settingsElement.innerHTML = `
+        <div class="alert-setting-group">
+            <div class="alert-setting-item">
+                <input type="checkbox" id="rsiAlert" ${alertSettings.rsiAlerts ? 'checked' : ''} 
+                       onchange="toggleAlertSetting('rsiAlerts', this.checked)">
                 <label for="rsiAlert">RSI Overbought/Oversold (70/30)</label>
-              </div>
-              <div class="alert-setting-item">
-                <input type="checkbox" id="priceAlert" onchange="toggleAlertSetting('priceAlerts', this.checked)">
+            </div>
+            <div class="alert-setting-item">
+                <input type="checkbox" id="priceAlert" ${alertSettings.priceAlerts ? 'checked' : ''}
+                       onchange="toggleAlertSetting('priceAlerts', this.checked)">
                 <label for="priceAlert">Key Price Level Breaks</label>
-              </div>
-              <div class="alert-setting-item">
-                <input type="checkbox" id="volumeAlert" checked onchange="toggleAlertSetting('volumeAlerts', this.checked)">
+            </div>
+            <div class="alert-setting-item">
+                <input type="checkbox" id="volumeAlert" ${alertSettings.volumeAlerts ? 'checked' : ''}
+                       onchange="toggleAlertSetting('volumeAlerts', this.checked)">
                 <label for="volumeAlert">Volume Spikes (2x Average)</label>
-              </div>
-              <div class="alert-setting-item">
-                <input type="checkbox" id="momentumAlert" checked onchange="toggleAlertSetting('momentumAlerts', this.checked)">
+            </div>
+            <div class="alert-setting-item">
+                <input type="checkbox" id="momentumAlert" ${alertSettings.momentumAlerts ? 'checked' : ''}
+                       onchange="toggleAlertSetting('momentumAlerts', this.checked)">
                 <label for="momentumAlert">Momentum Shifts</label>
-              </div>
             </div>
-            <div class="alert-actions-global">
-              <button class="alert-btn test" onclick="testAlertSystem()">Test Alert System</button>
-              <button class="alert-btn clear" onclick="clearAllAlerts()">Clear All Alerts</button>
-            </div>
-          </div>
         </div>
-      </div>
-    </div>
-  </div>
+        <div class="alert-actions-global">
+            <button class="alert-btn test" onclick="testAlertSystem()">Test Alert System</button>
+            <button class="alert-btn clear" onclick="clearAllAlerts()">Clear All Alerts</button>
+        </div>
+    `;
+}
 
-  <!-- =============================================================== -->
-  <!-- ✅ CORRECTED SCRIPT LOADING ORDER -->
-  <!-- =============================================================== -->
-  
-  <!-- Core Chart.js Dependencies -->
-  <script src="https://cdn.jsdelivr.net/npm/luxon@3"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1"></script>
-  
-  <!-- Financial Charts Extension -->
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial@0.2.0"></script>
-  
-  <!-- Additional Chart.js Plugins -->
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
-  <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@1.2.1"></script>
+// ==================== UTILITY FUNCTIONS ====================
 
-  <!-- Load main unified script FIRST -->
-  <script src="app.js"></script>
-  
-  <!-- Then load modules -->
-  <script src="analysis_alerts.js"></script>
-</body>
-</html>
+// Get signal type from signal text
+function getSignalType(signal) {
+    if (signal.toLowerCase().includes('buy') || signal.toLowerCase().includes('bullish')) {
+        return 'bullish';
+    } else if (signal.toLowerCase().includes('sell') || signal.toLowerCase().includes('bearish')) {
+        return 'bearish';
+    }
+    return 'neutral';
+}
+
+// Get signal icon
+function getSignalIcon(signalType) {
+    switch(signalType) {
+        case 'bullish': return '🟢';
+        case 'bearish': return '🔴';
+        default: return '⚪';
+    }
+}
+
+// Get momentum description text
+function getMomentumText(value) {
+    if (value >= 80) return 'Very Bullish';
+    if (value >= 50) return 'Bullish';
+    if (value >= 20) return 'Slightly Bullish';
+    if (value >= -20) return 'Neutral';
+    if (value >= -50) return 'Slightly Bearish';
+    if (value >= -80) return 'Bearish';
+    return 'Very Bearish';
+}
+
+// Get strength description text
+function getStrengthText(value) {
+    if (value >= 80) return 'Very Strong';
+    if (value >= 67) return 'Strong';
+    if (value >= 45) return 'Moderate';
+    if (value >= 33) return 'Weak';
+    return 'Very Weak';
+}
+
+// Get risk description text
+function getRiskText(value) {
+    if (value >= 80) return 'Very High';
+    if (value >= 67) return 'High';
+    if (value >= 45) return 'Medium';
+    if (value >= 33) return 'Low';
+    return 'Very Low';
+}
+
+// Get CSS classes for values
+function getMomentumClass(value) {
+    if (value >= 50) return 'bullish';
+    if (value <= -50) return 'bearish';
+    return 'neutral';
+}
+
+function getStrengthClass(value) {
+    if (value >= 67) return 'strong';
+    if (value <= 33) return 'weak';
+    return 'moderate';
+}
+
+function getRiskClass(value) {
+    if (value >= 67) return 'high';
+    if (value <= 33) return 'low';
+    return 'medium';
+}
+
+function getConsensusClass(percent) {
+    if (percent >= 80) return 'strong';
+    if (percent >= 60) return 'moderate';
+    return 'weak';
+}
+
+function getConsensusText(percent) {
+    if (percent >= 80) return 'Strong Agreement';
+    if (percent >= 60) return 'Moderate Agreement';
+    return 'Weak Agreement';
+}
+
+function getConfidenceClass(confidence) {
+    if (confidence >= 80) return 'high';
+    if (confidence >= 60) return 'medium';
+    return 'low';
+}
+
+// Generate unique alert ID
+function generateAlertId() {
+    return 'alert_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+}
+
+// Show alert notification
+function showAlertNotification(alert) {
+    // Could integrate with browser notifications here
+    console.log(`ALERT: ${alert.type} - ${alert.message}`);
+}
+
+// Load alert settings from localStorage
+function loadAlertSettings() {
+    try {
+        const saved = localStorage.getItem('megaFlowz_alertSettings');
+        if (saved) {
+            alertSettings = { ...alertSettings, ...JSON.parse(saved) };
+        }
+    } catch (e) {
+        console.warn('Could not load alert settings:', e);
+    }
+}
+
+// Save alert settings to localStorage
+function saveAlertSettings() {
+    try {
+        localStorage.setItem('megaFlowz_alertSettings', JSON.stringify(alertSettings));
+    } catch (e) {
+        console.warn('Could not save alert settings:', e);
+    }
+}
+
+// Test function to demonstrate gauge functionality
+function testGauges() {
+    const testValues = {
+        momentum: 75,
+        volatility: 25,
+        strength: 85,
+        risk: 65
+    };
+    updateAllProfessionalGauges(testValues);
+}
+
+// Initialize when Analysis tab is opened
+function initializeAnalysisTab() {
+    const gaugesContainer = document.getElementById('gauges-container');
+    if (gaugesContainer && gaugesContainer.getAttribute('data-initialized') !== 'true') {
+        initializeAnalysisAlerts();
+    }
+}
+
+// Export functions for global access
+window.analysisAlerts = {
+    initialize: initializeAnalysisAlerts,
+    updateAnalysis: updateAnalysis,
+    calculateConfluence: calculateConfluence,
+    createAlert: createAlert,
+    resolveAlert: resolveAlert,
+    clearAllAlerts: clearAllAlerts,
+    checkRSIAlerts: checkRSIAlerts,
+    checkPriceAlerts: checkPriceAlerts,
+    checkVolumeAlerts: checkVolumeAlerts,
+    updateAllProfessionalGauges: updateAllProfessionalGauges,
+    testGauges: testGauges,
+    initializeAnalysisTab: initializeAnalysisTab
+};
+
+// Make functions globally available
+window.toggleAlertSetting = toggleAlertSetting;
+window.resolveAlert = resolveAlert;
+window.clearAllAlerts = clearAllAlerts;
+window.testAlertSystem = testAlertSystem;
+window.testGauges = testGauges;
+window.initializeAnalysisTab = initializeAnalysisTab;
+
+// Auto-initialize when DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+    console.log("🧠 MEGA FLOWZ Analysis & Alerts module loaded");
+    // Initialize when Analysis tab is first opened
+});

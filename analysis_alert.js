@@ -1,6 +1,6 @@
-# ===============================================================
-# 📊🔔 ANALYSIS_ALERTS.JS - PROFESSIONAL ENHANCED VERSION
-# ===============================================================
+// ===============================================================
+// 📊🔔 ANALYSIS_ALERTS.JS - PROFESSIONAL GAUGE VERSION
+// ===============================================================
 
 // Analysis state
 let currentAnalysis = {};
@@ -20,14 +20,171 @@ let gaugeValues = {
     risk: 50
 };
 
+// Professional Gauge Configuration
+const GAUGE_CONFIGS = {
+    momentum: {
+        thresholds: [0, 20, 40, 60, 80, 100],
+        labels: ['Extreme Bear', 'Bearish', 'Neutral', 'Bullish', 'Extreme Bull'],
+        colors: ['#DC2626', '#EF4444', '#9CA3AF', '#60A5FA', '#1D4ED8']
+    },
+    volatility: {
+        thresholds: [0, 20, 40, 60, 80, 100],
+        labels: ['Very Low', 'Low', 'Medium', 'High', 'Extreme'],
+        colors: ['#00D394', '#22C55E', '#EAB308', '#F97316', '#DC2626'] // Reversed
+    },
+    strength: {
+        thresholds: [0, 20, 40, 60, 80, 100],
+        labels: ['Very Weak', 'Weak', 'Moderate', 'Strong', 'Very Strong'],
+        colors: ['#DC2626', '#EF4444', '#EAB308', '#22C55E', '#00D394']
+    },
+    risk: {
+        thresholds: [0, 20, 40, 60, 80, 100],
+        labels: ['Very Low', 'Low', 'Medium', 'High', 'Very High'],
+        colors: ['#00D394', '#22C55E', '#EAB308', '#F97316', '#DC2626'] // Reversed
+    }
+};
+
 // Initialize analysis & alerts module
 function initializeAnalysisAlerts() {
     console.log("📊🔔 Enhanced Analysis & Alerts module initialized");
     loadAlertSettings();
     createGaugeComponents();
+    initializeProfessionalGauges();
     initializeEnhancedAnalysis();
     renderAnalysisSections();
     renderAlertsSections();
+}
+
+// ==================== PROFESSIONAL GAUGE SYSTEM ====================
+
+// Get gauge color based on type and value
+function getGaugeColor(type, value) {
+    if (type === 'volatility' || type === 'risk') {
+        // Reversed: green→yellow→red
+        if (value <= 20) return '#00D394';
+        if (value <= 40) return '#22C55E';
+        if (value <= 60) return '#EAB308';
+        if (value <= 80) return '#F97316';
+        return '#DC2626';
+    } else {
+        // Normal: red→yellow→green
+        if (value <= 20) return '#DC2626';
+        if (value <= 40) return '#EF4444';
+        if (value <= 60) return '#EAB308';
+        if (value <= 80) return '#60A5FA';
+        return '#00D394';
+    }
+}
+
+// Get gauge label and color based on value
+function getGaugeLabel(type, value) {
+    const config = GAUGE_CONFIGS[type];
+    if (!config) return { label: 'Unknown', color: '#9CA3AF' };
+
+    for (let i = 0; i < config.thresholds.length - 1; i++) {
+        if (value >= config.thresholds[i] && value < config.thresholds[i + 1]) {
+            return {
+                label: config.labels[i],
+                color: config.colors[i]
+            };
+        }
+    }
+    
+    return {
+        label: config.labels[config.labels.length - 1],
+        color: config.colors[config.colors.length - 1]
+    };
+}
+
+// Enhanced professional gauge update function
+function updateProfessionalGauge(type, value) {
+    const needle = document.getElementById(`${type}-needle`);
+    const scoreEl = document.getElementById(`${type}-score`);
+    const labelEl = document.getElementById(`${type}-label`);
+    const arcEl = document.getElementById(`${type}-arc`);
+    const indicatorEl = document.getElementById(`${type}-indicator`);
+    const gaugeItem = document.getElementById(`${type}-gauge`);
+
+    if (!needle || !scoreEl || !labelEl || !arcEl || !indicatorEl) return;
+
+    // Remove extreme class first
+    gaugeItem.classList.remove('extreme');
+
+    // 1. Needle rotation (-135° to +135°)
+    const rotation = (value / 100) * 270 - 135;
+    needle.style.transform = `translateX(-50%) rotate(${rotation}deg)`;
+
+    // 2. Update score with smooth counting
+    const currentValue = parseInt(scoreEl.textContent) || 0;
+    animateValue(scoreEl, currentValue, Math.round(value), 800);
+
+    // 3. Update arc color with proper gradient
+    const gaugeColor = getGaugeColor(type, value);
+    arcEl.style.background = `conic-gradient(
+        from -135deg,
+        ${gaugeColor} 0deg,
+        ${gaugeColor} ${value * 2.7}deg,
+        rgba(255, 255, 255, 0.1) ${value * 2.7}deg,
+        rgba(255, 255, 255, 0.1) 270deg
+    )`;
+
+    // 4. Update label and indicator
+    const labelInfo = getGaugeLabel(type, value);
+    labelEl.textContent = labelInfo.label;
+    labelEl.style.color = labelInfo.color;
+    labelEl.style.borderColor = `${labelInfo.color}30`;
+    labelEl.style.background = `${labelInfo.color}15`;
+    
+    indicatorEl.style.background = labelInfo.color;
+
+    // 5. Add extreme effects for values at boundaries
+    if (value >= 90 || value <= 10) {
+        gaugeItem.classList.add('extreme');
+    }
+}
+
+// Smooth value counting animation
+function animateValue(element, start, end, duration) {
+    const startTime = performance.now();
+    const change = end - start;
+
+    function updateValue(currentTime) {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        
+        // Easing function for smooth counting
+        const easeOut = 1 - Math.pow(1 - progress, 3);
+        const currentValue = Math.round(start + change * easeOut);
+        
+        element.textContent = currentValue;
+
+        if (progress < 1) {
+            requestAnimationFrame(updateValue);
+        }
+    }
+
+    requestAnimationFrame(updateValue);
+}
+
+// Initialize gauges with default values
+function initializeProfessionalGauges() {
+    // Set initial values for all gauges
+    updateProfessionalGauge('momentum', 50);
+    updateProfessionalGauge('volatility', 50);
+    updateProfessionalGauge('strength', 50);
+    updateProfessionalGauge('risk', 50);
+    
+    console.log("🎯 Professional gauges initialized");
+}
+
+// Update all gauges
+function updateAllProfessionalGauges(values) {
+    if (!values) return;
+    
+    updateProfessionalGauge('momentum', values.momentum || 50);
+    updateProfessionalGauge('volatility', values.volatility || 50);
+    updateProfessionalGauge('strength', values.strength || 50);
+    updateProfessionalGauge('risk', values.risk || 50);
 }
 
 // ==================== CONFLUENCE CALCULATION ENGINE ====================
@@ -60,7 +217,7 @@ function calculateConfluence(pyramidData) {
     gaugeValues.strength = calculateStrengthConfluence(analysis);
     gaugeValues.risk = calculateRiskAssessment(analysis);
     
-    updateGauges();
+    updateAllProfessionalGauges(gaugeValues);
     return gaugeValues;
 }
 
@@ -151,9 +308,9 @@ function calculateRiskAssessment(analysis) {
     return Math.round((volatilityRisk + momentumRisk + consensusRisk) / 3);
 }
 
-// ==================== GAUGE COMPONENTS ====================
+// ==================== PROFESSIONAL GAUGE COMPONENTS ====================
 
-// Create gauge components
+// Create professional gauge components
 function createGaugeComponents() {
     const analysisContainer = document.getElementById('analysis-tab');
     if (!analysisContainer) return;
@@ -163,44 +320,24 @@ function createGaugeComponents() {
         const gaugesHTML = `
             <div class="gauges-container" id="gauges-container">
                 <div class="gauge-row">
-                    <div class="gauge-item">
+                    <div class="gauge-item" id="momentum-gauge">
                         <div class="gauge-title">Momentum</div>
-                        <div class="speedometer-gauge" id="momentum-gauge">
-                            <div class="gauge-background"></div>
-                            <div class="gauge-needle" id="momentum-needle"></div>
-                            <div class="gauge-value" id="momentum-value">50</div>
-                        </div>
-                        <div class="gauge-label" id="momentum-label">Neutral</div>
+                        ${createProfessionalGaugeLayer('momentum', 50)}
                     </div>
                     
-                    <div class="gauge-item">
+                    <div class="gauge-item" id="volatility-gauge">
                         <div class="gauge-title">Volatility</div>
-                        <div class="speedometer-gauge" id="volatility-gauge">
-                            <div class="gauge-background"></div>
-                            <div class="gauge-needle" id="volatility-needle"></div>
-                            <div class="gauge-value" id="volatility-value">50</div>
-                        </div>
-                        <div class="gauge-label" id="volatility-label">Medium</div>
+                        ${createProfessionalGaugeLayer('volatility', 50)}
                     </div>
                     
-                    <div class="gauge-item">
+                    <div class="gauge-item" id="strength-gauge">
                         <div class="gauge-title">Strength</div>
-                        <div class="speedometer-gauge" id="strength-gauge">
-                            <div class="gauge-background"></div>
-                            <div class="gauge-needle" id="strength-needle"></div>
-                            <div class="gauge-value" id="strength-value">50</div>
-                        </div>
-                        <div class="gauge-label" id="strength-label">Moderate</div>
+                        ${createProfessionalGaugeLayer('strength', 50)}
                     </div>
                     
-                    <div class="gauge-item">
+                    <div class="gauge-item" id="risk-gauge">
                         <div class="gauge-title">Risk</div>
-                        <div class="speedometer-gauge" id="risk-gauge">
-                            <div class="gauge-background"></div>
-                            <div class="gauge-needle" id="risk-needle"></div>
-                            <div class="gauge-value" id="risk-value">50</div>
-                        </div>
-                        <div class="gauge-label" id="risk-label">Medium</div>
+                        ${createProfessionalGaugeLayer('risk', 50)}
                     </div>
                 </div>
             </div>
@@ -210,61 +347,51 @@ function createGaugeComponents() {
     }
 }
 
-// Update all gauges
-function updateGauges() {
-    updateGauge('momentum', gaugeValues.momentum);
-    updateGauge('volatility', gaugeValues.volatility);
-    updateGauge('strength', gaugeValues.strength);
-    updateGauge('risk', gaugeValues.risk);
-}
-
-// Update individual gauge
-function updateGauge(type, value) {
-    const needle = document.getElementById(`${type}-needle`);
-    const valueElement = document.getElementById(`${type}-value`);
-    const labelElement = document.getElementById(`${type}-label`);
+// ------------------------------------------------------------
+//  PROFESSIONAL GAUGE LAYER - Enhanced Visual Design
+// ------------------------------------------------------------
+function createProfessionalGaugeLayer(type, value) {
+    const labelInfo = getGaugeLabel(type, value);
     
-    if (!needle || !valueElement || !labelElement) return;
-    
-    // Update needle position (-135deg to 135deg for 0-100 range)
-    const rotation = (value / 100) * 270 - 135;
-    needle.style.transform = `rotate(${rotation}deg)`;
-    
-    // Update value display
-    valueElement.textContent = value;
-    
-    // Update label based on value
-    let label = '';
-    let labelClass = '';
-    
-    switch(type) {
-        case 'momentum':
-            if (value >= 67) { label = 'Bullish'; labelClass = 'bullish'; }
-            else if (value <= 33) { label = 'Bearish'; labelClass = 'bearish'; }
-            else { label = 'Neutral'; labelClass = 'neutral'; }
-            break;
+    return `
+        <div class="gauge-container">
+            <!-- Background Arc -->
+            <div class="gauge-arc">
+                <div class="gauge-arc-fill" id="${type}-arc"></div>
+            </div>
             
-        case 'volatility':
-            if (value >= 67) { label = 'High'; labelClass = 'high'; }
-            else if (value <= 33) { label = 'Low'; labelClass = 'low'; }
-            else { label = 'Medium'; labelClass = 'medium'; }
-            break;
+            <!-- Center Hub -->
+            <div class="gauge-hub"></div>
             
-        case 'strength':
-            if (value >= 67) { label = 'Strong'; labelClass = 'strong'; }
-            else if (value <= 33) { label = 'Weak'; labelClass = 'weak'; }
-            else { label = 'Moderate'; labelClass = 'moderate'; }
-            break;
+            <!-- Needle with smooth pivot -->
+            <div class="gauge-needle-container">
+                <div class="gauge-needle" id="${type}-needle">
+                    <div class="needle-head"></div>
+                </div>
+            </div>
             
-        case 'risk':
-            if (value >= 67) { label = 'High'; labelClass = 'high'; }
-            else if (value <= 33) { label = 'Low'; labelClass = 'low'; }
-            else { label = 'Medium'; labelClass = 'medium'; }
-            break;
-    }
-    
-    labelElement.textContent = label;
-    labelElement.className = `gauge-label ${labelClass}`;
+            <!-- Value Display -->
+            <div class="gauge-value-container">
+                <div class="gauge-score" id="${type}-score">${Math.round(value)}</div>
+                <div class="gauge-unit">%</div>
+            </div>
+            
+            <!-- Label with colored indicator -->
+            <div class="gauge-label-container">
+                <div class="gauge-label" id="${type}-label" style="color: ${labelInfo.color}; border-color: ${labelInfo.color}30; background: ${labelInfo.color}15">${labelInfo.label}</div>
+                <div class="gauge-indicator-dot" id="${type}-indicator" style="background: ${labelInfo.color}"></div>
+            </div>
+            
+            <!-- Threshold Markers -->
+            <div class="gauge-markers">
+                <div class="marker marker-0">0</div>
+                <div class="marker marker-25">25</div>
+                <div class="marker marker-50">50</div>
+                <div class="marker marker-75">75</div>
+                <div class="marker marker-100">100</div>
+            </div>
+        </div>
+    `;
 }
 
 // ==================== ENHANCED ANALYSIS COMPONENTS ====================
@@ -1123,6 +1250,22 @@ function saveAlertSettings() {
     }
 }
 
+// Test function to demonstrate gauge functionality
+function testGauges() {
+    const testValues = {
+        momentum: 75,
+        volatility: 25,
+        strength: 85,
+        risk: 65
+    };
+    updateAllProfessionalGauges(testValues);
+}
+
+// Initialize professional gauges when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(initializeProfessionalGauges, 1000);
+});
+
 // Export functions for global access
 window.analysisAlerts = {
     initialize: initializeAnalysisAlerts,
@@ -1133,7 +1276,9 @@ window.analysisAlerts = {
     clearAllAlerts: clearAllAlerts,
     checkRSIAlerts: checkRSIAlerts,
     checkPriceAlerts: checkPriceAlerts,
-    checkVolumeAlerts: checkVolumeAlerts
+    checkVolumeAlerts: checkVolumeAlerts,
+    updateAllProfessionalGauges: updateAllProfessionalGauges,
+    testGauges: testGauges
 };
 
 // Make functions globally available
@@ -1141,3 +1286,4 @@ window.toggleAlert = toggleAlertSetting;
 window.resolveAlert = resolveAlert;
 window.clearAllAlerts = clearAllAlerts;
 window.testAlertSystem = testAlertSystem;
+window.testGauges = testGauges;

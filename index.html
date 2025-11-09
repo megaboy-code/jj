@@ -5,12 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>🧠 MEGA FLOWZ - Professional Trading Dashboard</title>
   
-  <!-- External Libraries -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
-  <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@1.2.1"></script>
-  
   <!-- Google Fonts for Professional Typography -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -94,8 +88,8 @@
       </div>
       
       <div class="controls">
-        <button class="size-btn active" onclick="setPyramidSize('small')">📱 Compact</button>
-        <button class="size-btn" onclick="setPyramidSize('medium')">📊 Standard</button>
+        <button class="size-btn" onclick="setPyramidSize('small')">📱 Compact</button>
+        <button class="size-btn active" onclick="setPyramidSize('medium')">📊 Standard</button>
         <button class="size-btn" onclick="setPyramidSize('large')">🖥️ Detailed</button>
       </div>
       
@@ -122,6 +116,7 @@
               <option value="line">📈 Line</option>
               <option value="area">🟦 Area</option>
               <option value="trend">🎯 Bull/Bear Trend</option>
+              <option value="candlestick">🕯️ Candlestick</option>
             </select>
             
             <!-- Dynamic Color Pickers -->
@@ -131,10 +126,10 @@
           </div>
           
           <!-- Chart Controls -->
-          <button class="control-btn" onclick="toggleCrosshair()">⊕ Cross</button>
+          <button class="control-btn" id="crosshairBtn" onclick="toggleCrosshair()">⊕</button>
           <button class="control-btn" onclick="downloadChart()">💾 Save</button>
-          <button class="control-btn" onclick="zoomIn()">🔍+</button>
-          <button class="control-btn" onclick="zoomOut()">🔍-</button>
+          <button class="control-btn" onclick="zoomIn()">🔍</button>
+    
           <button class="control-btn" onclick="resetZoom()">🔄</button>
           
           <!-- Current Price Display -->
@@ -144,11 +139,10 @@
         
         <div class="chart-area">
           <!-- Enhanced Indicators Panel -->
-          <div class="indicators-panel" id="indicatorsPanel">
+          <div class="indicators-panel collapsed" id="indicatorsPanel">
             <div class="panel-header">
               <span class="panel-emoji" onclick="toggleIndicatorsPanel()">📊</span>
-              <h3>Indicators & Settings</h3>
-              <button class="panel-toggle" onclick="toggleIndicatorsPanel()">◀</button>
+              <h3 onclick="toggleIndicatorsPanel()">Indicators & Settings</h3>
             </div>
             
             <!-- Indicators Dropdown -->
@@ -181,50 +175,130 @@
     </div>
 
     <div id="analysis-tab" class="tab-content">
-      <!-- Gauges Container -->
-      <div class="gauges-container" id="gauges-container">
-        <div class="gauge-row">
-          <div class="gauge-item">
+<!-- Gauges Container -->
+<div class="gauges-container" id="gauges-container">
+    <div class="gauge-row">
+        <div class="gauge-item" id="momentum-gauge">
             <div class="gauge-title">Momentum</div>
-            <div class="speedometer-gauge" id="momentum-gauge">
-              <div class="gauge-background"></div>
-              <div class="gauge-needle" id="momentum-needle"></div>
-              <div class="gauge-value" id="momentum-value">50</div>
+            <div class="gauge-container">
+                <div class="gauge-arc">
+                    <div class="gauge-arc-fill" id="momentum-arc"></div>
+                </div>
+                <div class="gauge-hub"></div>
+                <div class="gauge-needle-container">
+                    <div class="gauge-needle" id="momentum-needle">
+                        <div class="needle-head"></div>
+                    </div>
+                </div>
+                <div class="gauge-value-container">
+                    <div class="gauge-score" id="momentum-score">50</div>
+                    <div class="gauge-unit">%</div>
+                </div>
+                <div class="gauge-label-container">
+                    <div class="gauge-label" id="momentum-label">Neutral</div>
+                    <div class="gauge-indicator-dot" id="momentum-indicator"></div>
+                </div>
+                <div class="gauge-markers">
+                    <div class="marker marker-0">0</div>
+                    <div class="marker marker-25">25</div>
+                    <div class="marker marker-50">50</div>
+                    <div class="marker marker-75">75</div>
+                    <div class="marker marker-100">100</div>
+                </div>
             </div>
-            <div class="gauge-label" id="momentum-label">Neutral</div>
-          </div>
-          
-          <div class="gauge-item">
-            <div class="gauge-title">Volatility</div>
-            <div class="speedometer-gauge" id="volatility-gauge">
-              <div class="gauge-background"></div>
-              <div class="gauge-needle" id="volatility-needle"></div>
-              <div class="gauge-value" id="volatility-value">50</div>
-            </div>
-            <div class="gauge-label" id="volatility-label">Medium</div>
-          </div>
-          
-          <div class="gauge-item">
-            <div class="gauge-title">Strength</div>
-            <div class="speedometer-gauge" id="strength-gauge">
-              <div class="gauge-background"></div>
-              <div class="gauge-needle" id="strength-needle"></div>
-              <div class="gauge-value" id="strength-value">50</div>
-            </div>
-            <div class="gauge-label" id="strength-label">Moderate</div>
-          </div>
-          
-          <div class="gauge-item">
-            <div class="gauge-title">Risk</div>
-            <div class="speedometer-gauge" id="risk-gauge">
-              <div class="gauge-background"></div>
-              <div class="gauge-needle" id="risk-needle"></div>
-              <div class="gauge-value" id="risk-value">50</div>
-            </div>
-            <div class="gauge-label" id="risk-label">Medium</div>
-          </div>
         </div>
-      </div>
+        
+        <div class="gauge-item" id="volatility-gauge">
+            <div class="gauge-title">Volatility</div>
+            <div class="gauge-container">
+                <div class="gauge-arc">
+                    <div class="gauge-arc-fill" id="volatility-arc"></div>
+                </div>
+                <div class="gauge-hub"></div>
+                <div class="gauge-needle-container">
+                    <div class="gauge-needle" id="volatility-needle">
+                        <div class="needle-head"></div>
+                    </div>
+                </div>
+                <div class="gauge-value-container">
+                    <div class="gauge-score" id="volatility-score">50</div>
+                    <div class="gauge-unit">%</div>
+                </div>
+                <div class="gauge-label-container">
+                    <div class="gauge-label" id="volatility-label">Medium</div>
+                    <div class="gauge-indicator-dot" id="volatility-indicator"></div>
+                </div>
+                <div class="gauge-markers">
+                    <div class="marker marker-0">0</div>
+                    <div class="marker marker-25">25</div>
+                    <div class="marker marker-50">50</div>
+                    <div class="marker marker-75">75</div>
+                    <div class="marker marker-100">100</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="gauge-item" id="strength-gauge">
+            <div class="gauge-title">Strength</div>
+            <div class="gauge-container">
+                <div class="gauge-arc">
+                    <div class="gauge-arc-fill" id="strength-arc"></div>
+                </div>
+                <div class="gauge-hub"></div>
+                <div class="gauge-needle-container">
+                    <div class="gauge-needle" id="strength-needle">
+                        <div class="needle-head"></div>
+                    </div>
+                </div>
+                <div class="gauge-value-container">
+                    <div class="gauge-score" id="strength-score">50</div>
+                    <div class="gauge-unit">%</div>
+                </div>
+                <div class="gauge-label-container">
+                    <div class="gauge-label" id="strength-label">Moderate</div>
+                    <div class="gauge-indicator-dot" id="strength-indicator"></div>
+                </div>
+                <div class="gauge-markers">
+                    <div class="marker marker-0">0</div>
+                    <div class="marker marker-25">25</div>
+                    <div class="marker marker-50">50</div>
+                    <div class="marker marker-75">75</div>
+                    <div class="marker marker-100">100</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="gauge-item" id="risk-gauge">
+            <div class="gauge-title">Risk</div>
+            <div class="gauge-container">
+                <div class="gauge-arc">
+                    <div class="gauge-arc-fill" id="risk-arc"></div>
+                </div>
+                <div class="gauge-hub"></div>
+                <div class="gauge-needle-container">
+                    <div class="gauge-needle" id="risk-needle">
+                        <div class="needle-head"></div>
+                    </div>
+                </div>
+                <div class="gauge-value-container">
+                    <div class="gauge-score" id="risk-score">50</div>
+                    <div class="gauge-unit">%</div>
+                </div>
+                <div class="gauge-label-container">
+                    <div class="gauge-label" id="risk-label">Medium</div>
+                    <div class="gauge-indicator-dot" id="risk-indicator"></div>
+                </div>
+                <div class="gauge-markers">
+                    <div class="marker marker-0">0</div>
+                    <div class="marker marker-25">25</div>
+                    <div class="marker marker-50">50</div>
+                    <div class="marker marker-75">75</div>
+                    <div class="marker marker-100">100</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
       <!-- Multi-Timeframe Strength -->
       <div class="analysis-section" id="timeframe-strength-section">
@@ -371,7 +445,7 @@
         </div>
       </div>
 
-      <!-- Technical Summary & Signals - ONLY ONE COPY -->
+      <!-- Technical Summary & Signals -->
       <div class="analysis-section">
         <h3>📊 Technical Summary</h3>
         <div id="technicalSummary">Loading analysis...</div>
@@ -380,7 +454,6 @@
         <h3>🎯 Trading Signals</h3>
         <div class="signal-list" id="tradingSignals"></div>
       </div>
-      <!-- REMOVED DUPLICATE MARKET STRUCTURE SECTION -->
     </div>
 
     <div id="alerts-tab" class="tab-content">
@@ -427,14 +500,26 @@
   </div>
 
   <!-- =============================================================== -->
-  <!-- ✅ CORRECTED SCRIPT LOADING ORDER - APP.JS FIRST -->
+  <!-- ✅ CORRECTED SCRIPT LOADING ORDER -->
   <!-- =============================================================== -->
   
+  <!-- Core Chart.js Dependencies -->
+  <script src="https://cdn.jsdelivr.net/npm/luxon@3"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1"></script>
+  
+  <!-- Financial Charts Extension -->
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial@0.2.0"></script>
+  
+  <!-- Additional Chart.js Plugins -->
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+  <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@1.2.1"></script>
+
   <!-- Load main unified script FIRST -->
   <script src="app.js"></script>
   
   <!-- Then load modules -->
-  <script src="analysis.js"></script>
-  <script src="alerts.js"></script>
+  <script src="analysis_alerts.js"></script>
 </body>
 </html>

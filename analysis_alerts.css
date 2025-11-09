@@ -1,28 +1,36 @@
 /* ===============================================================
-   📊🔔 ANALYSIS & ALERTS STYLES - PROFESSIONAL SPEEDOMETER VERSION
+   📊🔔 ANALYSIS & ALERTS STYLES - COMPLETE PROFESSIONAL VERSION
    =============================================================== */
 
-/* ==================== PROFESSIONAL SPEEDOMETER GAUGES ==================== */
+/* ==================== PROFESSIONAL GAUGE SYSTEM ==================== */
 .gauges-container {
     background: var(--card);
     border-radius: 12px;
-    padding: 20px;
+    padding: 25px 20px;
     margin: 16px;
     border: 1px solid var(--border);
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
     backdrop-filter: blur(10px);
+    min-height: 280px;
+    display: flex;
+    align-items: center;
 }
 
 .gauge-row {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 20px;
+    gap: 25px;
     align-items: end;
+    width: 100%;
 }
 
 .gauge-item {
     text-align: center;
     transition: all 0.3s ease;
+    height: 200px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
 }
 
 .gauge-item.extreme {
@@ -33,26 +41,28 @@
     font-size: 0.9rem;
     font-weight: 600;
     color: var(--text);
-    margin-bottom: 15px;
+    margin-bottom: 20px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    height: 20px;
 }
 
-/* Professional Gauge Container */
+/* ==================== FIXED GAUGE CONTAINER ==================== */
 .gauge-container {
     position: relative;
     width: 140px;
     height: 120px;
     margin: 0 auto;
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
 }
 
-/* ==================== GAUGES LAYERED STRUCTURE ==================== */
-
-/* Outer Ring - Background Track */
+/* ==================== 270° ARC SYSTEM ==================== */
 .gauge-arc {
     position: absolute;
-    width: 100%;
-    height: 100%;
+    width: 140px;
+    height: 140px;
     border-radius: 50%;
     background: conic-gradient(
         from -135deg,
@@ -61,16 +71,15 @@
         transparent 270deg,
         transparent 360deg
     );
-    mask: radial-gradient(circle at center, transparent 55%, black 56%);
-    -webkit-mask: radial-gradient(circle at center, transparent 55%, black 56%);
-    overflow: hidden;
+    mask: radial-gradient(circle at center, transparent 60px, black 61px);
+    -webkit-mask: radial-gradient(circle at center, transparent 60px, black 61px);
+    top: -10px;
 }
 
-/* Inner Fill - Colored Progress on Track */
 .gauge-arc-fill {
     position: absolute;
-    width: 100%;
-    height: 100%;
+    width: 140px;
+    height: 140px;
     border-radius: 50%;
     background: conic-gradient(
         from -135deg,
@@ -79,16 +88,17 @@
         transparent 0deg,
         transparent 360deg
     );
-    mask: radial-gradient(circle at center, transparent 55%, black 56%);
-    -webkit-mask: radial-gradient(circle at center, transparent 55%, black 56%);
+    mask: radial-gradient(circle at center, transparent 60px, black 61px);
+    -webkit-mask: radial-gradient(circle at center, transparent 60px, black 61px);
     transition: background 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
     opacity: 0.9;
+    top: -10px;
 }
 
-/* Center Area - Clear for Display */
+/* ==================== FIXED NEEDLE SYSTEM ==================== */
 .gauge-hub {
     position: absolute;
-    top: 50%;
+    top: calc(50% - 10px);
     left: 50%;
     width: 16px;
     height: 16px;
@@ -100,22 +110,22 @@
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
 }
 
-/* Needle Container */
 .gauge-needle-container {
     position: absolute;
-    top: 0;
+    top: -10px;
     left: 50%;
-    width: 100%;
-    height: 100%;
+    width: 140px;
+    height: 140px;
     z-index: 5;
+    transform: translateX(-50%);
 }
 
 .gauge-needle {
     position: absolute;
-    top: 10%;
+    top: 20px;
     left: 50%;
     width: 3px;
-    height: 45%;
+    height: 50px;
     background: linear-gradient(to bottom, #ef4444, #f8fafc 30%, #f8fafc 70%, #ef4444);
     transform-origin: 50% 100%;
     transform: translateX(-50%) rotate(-135deg);
@@ -138,12 +148,12 @@
     border: 2px solid #f8fafc;
 }
 
-/* Value Display - Above Everything */
+/* ==================== VALUE DISPLAY ==================== */
 .gauge-value-container {
     position: absolute;
     top: 50%;
     left: 50%;
-    transform: translate(-50%, 20%);
+    transform: translate(-50%, 10%);
     text-align: center;
     z-index: 15;
     background: rgba(31, 41, 55, 0.95);
@@ -171,10 +181,10 @@
     font-weight: 500;
 }
 
-/* Label Container */
+/* ==================== LABEL CONTAINER ==================== */
 .gauge-label-container {
     position: absolute;
-    bottom: -10px;
+    bottom: -5px;
     left: 0;
     right: 0;
     display: flex;
@@ -208,18 +218,13 @@
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
-.gauge-item.extreme .gauge-indicator-dot {
-    animation: pulse 2s infinite;
-    box-shadow: 0 0 15px currentColor;
-}
-
-/* Threshold Markers */
+/* ==================== MARKERS ==================== */
 .gauge-markers {
     position: absolute;
-    top: 0;
+    top: -10px;
     left: 0;
     right: 0;
-    bottom: 0;
+    height: 140px;
     pointer-events: none;
     z-index: 3;
 }
@@ -239,178 +244,89 @@
 }
 
 .marker-0 {
-    bottom: 8px;
-    left: 12%;
+    bottom: 25px;
+    left: 22%;
 }
 
 .marker-25 {
-    bottom: 22px;
-    left: 26%;
+    bottom: 45px;
+    left: 32%;
 }
 
 .marker-50 {
-    bottom: 32px;
+    bottom: 60px;
     left: 50%;
     transform: translateX(-50%);
 }
 
 .marker-75 {
-    bottom: 22px;
-    left: 74%;
+    bottom: 45px;
+    left: 68%;
 }
 
 .marker-100 {
-    bottom: 8px;
-    left: 88%;
+    bottom: 25px;
+    left: 78%;
 }
 
 /* ==================== GAUGE COLOR SYSTEM ==================== */
-
-/* Momentum Gauge Colors */
-.gauge-item[data-gauge-type="momentum"] .gauge-label.bullish,
 .gauge-label.bullish { 
     background: rgba(0, 211, 148, 0.15); 
     color: #00D394; 
     border: 1px solid rgba(0, 211, 148, 0.3); 
 }
 
-.gauge-item[data-gauge-type="momentum"] .gauge-label.bearish,
 .gauge-label.bearish { 
     background: rgba(255, 77, 77, 0.15); 
     color: #FF4D4D; 
     border: 1px solid rgba(255, 77, 77, 0.3); 
 }
 
-.gauge-item[data-gauge-type="momentum"] .gauge-label.neutral,
 .gauge-label.neutral { 
     background: rgba(148, 163, 184, 0.15); 
     color: #94A3B8; 
     border: 1px solid rgba(148, 163, 184, 0.3); 
 }
 
-/* Strength Gauge Colors */
-.gauge-item[data-gauge-type="strength"] .gauge-label.strong,
 .gauge-label.strong { 
     background: rgba(0, 211, 148, 0.15); 
     color: #00D394; 
     border: 1px solid rgba(0, 211, 148, 0.3); 
 }
 
-.gauge-item[data-gauge-type="strength"] .gauge-label.weak,
 .gauge-label.weak { 
     background: rgba(255, 77, 77, 0.15); 
     color: #FF4D4D; 
     border: 1px solid rgba(255, 77, 77, 0.3); 
 }
 
-.gauge-item[data-gauge-type="strength"] .gauge-label.moderate,
 .gauge-label.moderate { 
     background: rgba(255, 170, 0, 0.15); 
     color: #FFAA00; 
     border: 1px solid rgba(255, 170, 0, 0.3); 
 }
 
-/* Volatility & Risk Gauge Colors (Reversed) */
-.gauge-item[data-gauge-type="volatility"] .gauge-label.high,
-.gauge-item[data-gauge-type="risk"] .gauge-label.high,
 .gauge-label.high { 
     background: rgba(255, 77, 77, 0.15); 
     color: #FF4D4D; 
     border: 1px solid rgba(255, 77, 77, 0.3); 
 }
 
-.gauge-item[data-gauge-type="volatility"] .gauge-label.low,
-.gauge-item[data-gauge-type="risk"] .gauge-label.low,
 .gauge-label.low { 
     background: rgba(0, 211, 148, 0.15); 
     color: #00D394; 
     border: 1px solid rgba(0, 211, 148, 0.3); 
 }
 
-.gauge-item[data-gauge-type="volatility"] .gauge-label.medium,
-.gauge-item[data-gauge-type="risk"] .gauge-label.medium,
 .gauge-label.medium { 
     background: rgba(255, 170, 0, 0.15); 
     color: #FFAA00; 
     border: 1px solid rgba(255, 170, 0, 0.3); 
 }
 
-/* Indicator Dot Colors */
-.gauge-item[data-gauge-type="momentum"] .gauge-indicator-dot.bullish,
-.gauge-item[data-gauge-type="strength"] .gauge-indicator-dot.strong,
-.gauge-item[data-gauge-type="volatility"] .gauge-indicator-dot.low,
-.gauge-item[data-gauge-type="risk"] .gauge-indicator-dot.low {
-    background: #00D394;
-}
-
-.gauge-item[data-gauge-type="momentum"] .gauge-indicator-dot.bearish,
-.gauge-item[data-gauge-type="strength"] .gauge-indicator-dot.weak,
-.gauge-item[data-gauge-type="volatility"] .gauge-indicator-dot.high,
-.gauge-item[data-gauge-type="risk"] .gauge-indicator-dot.high {
-    background: #FF4D4D;
-}
-
-.gauge-item[data-gauge-type="momentum"] .gauge-indicator-dot.neutral,
-.gauge-item[data-gauge-type="strength"] .gauge-indicator-dot.moderate,
-.gauge-item[data-gauge-type="volatility"] .gauge-indicator-dot.medium,
-.gauge-item[data-gauge-type="risk"] .gauge-indicator-dot.medium {
-    background: #FFAA00;
-}
-
-/* Responsive Gauges */
-@media (max-width: 1200px) {
-    .gauge-row {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 25px;
-    }
-    
-    .gauge-container {
-        width: 130px;
-        height: 110px;
-    }
-}
-
-@media (max-width: 768px) {
-    .gauge-row {
-        grid-template-columns: 1fr;
-        gap: 20px;
-    }
-    
-    .gauge-container {
-        width: 120px;
-        height: 100px;
-    }
-    
-    .gauge-score {
-        font-size: 1.2rem;
-    }
-    
-    .gauge-value-container {
-        padding: 8px 12px;
-        min-width: 60px;
-    }
-}
-
-/* Animation for gauge updates */
-@keyframes gaugePulse {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.02); }
-    100% { transform: scale(1); }
-}
-
-@keyframes pulse {
-    0%, 100% { 
-        transform: scale(1);
-        opacity: 1;
-    }
-    50% { 
-        transform: scale(1.2);
-        opacity: 0.8;
-    }
-}
-
-.gauge-item.updating .gauge-container {
-    animation: gaugePulse 0.6s ease;
+.gauge-item.extreme .gauge-indicator-dot {
+    animation: pulse 2s infinite;
+    box-shadow: 0 0 15px currentColor;
 }
 
 /* ==================== ANALYSIS SECTIONS ==================== */
@@ -1318,11 +1234,15 @@
     border-color: rgba(107, 114, 128, 0.3);
 }
 
-/* ==================== ANALYSIS RESPONSIVE DESIGN ==================== */
+/* ==================== RESPONSIVE DESIGN ==================== */
 @media (max-width: 1200px) {
     .gauge-row {
         grid-template-columns: repeat(2, 1fr);
-        gap: 16px;
+        gap: 30px;
+    }
+    
+    .gauges-container {
+        min-height: 320px;
     }
     
     .consensus-container {
@@ -1349,17 +1269,24 @@
 @media (max-width: 768px) {
     .gauges-container {
         margin: 10px;
-        padding: 16px;
+        padding: 20px 15px;
+        min-height: 380px;
     }
     
     .gauge-row {
         grid-template-columns: 1fr;
-        gap: 12px;
+        gap: 25px;
     }
     
     .gauge-container {
-        width: 120px;
-        height: 100px;
+        width: 130px;
+        height: 110px;
+    }
+    
+    .gauge-arc,
+    .gauge-arc-fill {
+        width: 130px;
+        height: 130px;
     }
     
     .analysis-section {
@@ -1386,18 +1313,39 @@
     }
 }
 
-/* Alert animations */
+/* ==================== ANIMATIONS ==================== */
+@keyframes gaugePulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+    100% { transform: scale(1); }
+}
+
+@keyframes pulse {
+    0%, 100% { 
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% { 
+        transform: scale(1.2);
+        opacity: 0.8;
+    }
+}
+
 @keyframes alertPulse {
     0% { box-shadow: 0 0 0 0 rgba(255, 77, 77, 0.7); }
     70% { box-shadow: 0 0 0 10px rgba(255, 77, 77, 0); }
     100% { box-shadow: 0 0 0 0 rgba(255, 77, 77, 0); }
 }
 
+.gauge-item.updating .gauge-container {
+    animation: gaugePulse 0.6s ease;
+}
+
 .alert-item.active:not(.resolved) {
     animation: alertPulse 2s infinite;
 }
 
-/* Summary content styling for analysis */
+/* ==================== SUMMARY CONTENT ==================== */
 .summary-content {
     display: grid;
     gap: 12px;

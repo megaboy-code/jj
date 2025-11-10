@@ -12,38 +12,54 @@ let alertSettings = {
     momentumAlerts: true
 };
 
-// Gauge state
+// Gauge state with placeholder values
 let gaugeValues = {
-    momentum: 50,
-    volatility: 50,
-    strength: 50,
-    risk: 50
+    momentum: -45,    // Bearish momentum
+    volatility: 68,   // High volatility
+    strength: 82,     // Strong trend
+    risk: 35          // Low risk
 };
 
 // Professional Gauge Configuration
 const GAUGE_CONFIGS = {
     momentum: {
-        thresholds: [0, 20, 40, 60, 80, 100],
-        labels: ['Extreme Bear', 'Bearish', 'Neutral', 'Bullish', 'Extreme Bull'],
-        colors: ['#DC2626', '#EF4444', '#9CA3AF', '#60A5FA', '#1D4ED8'],
-        classes: ['bearish', 'bearish', 'neutral', 'bullish', 'bullish']
+        minValue: -100,
+        maxValue: 100,
+        minAngle: -135,
+        maxAngle: 135,
+        thresholds: [-100, -50, -20, 20, 50, 100],
+        labels: ['Strong Bear', 'Bearish', 'Slight Bear', 'Slight Bull', 'Bullish', 'Strong Bull'],
+        colors: ['#DC2626', '#EF4444', '#F59E0B', '#22C55E', '#16A34A', '#15803D'],
+        classes: ['bearish', 'bearish', 'neutral', 'neutral', 'bullish', 'bullish']
     },
     volatility: {
+        minValue: 0,
+        maxValue: 100,
+        minAngle: -135,
+        maxAngle: 135,
         thresholds: [0, 20, 40, 60, 80, 100],
-        labels: ['Very Low', 'Low', 'Medium', 'High', 'Extreme'],
-        colors: ['#00D394', '#22C55E', '#EAB308', '#F97316', '#DC2626'],
-        classes: ['low', 'low', 'medium', 'high', 'high']
+        labels: ['Very Low', 'Low', 'Medium', 'High', 'Very High', 'Extreme'],
+        colors: ['#00D394', '#22C55E', '#EAB308', '#F97316', '#EF4444', '#DC2626'],
+        classes: ['low', 'low', 'medium', 'high', 'high', 'high']
     },
     strength: {
+        minValue: 0,
+        maxValue: 100,
+        minAngle: -135,
+        maxAngle: 135,
         thresholds: [0, 20, 40, 60, 80, 100],
-        labels: ['Very Weak', 'Weak', 'Moderate', 'Strong', 'Very Strong'],
-        colors: ['#DC2626', '#EF4444', '#EAB308', '#22C55E', '#00D394'],
-        classes: ['weak', 'weak', 'moderate', 'strong', 'strong']
+        labels: ['Very Weak', 'Weak', 'Moderate', 'Strong', 'Very Strong', 'Extreme'],
+        colors: ['#DC2626', '#EF4444', '#EAB308', '#22C55E', '#00D394', '#00B378'],
+        classes: ['weak', 'weak', 'moderate', 'strong', 'strong', 'strong']
     },
     risk: {
-        thresholds: [0, 20, 40, 60, 80, 100],
+        minValue: 0,
+        maxValue: 100,
+        minAngle: -135,
+        maxAngle: 135,
+        thresholds: [0, 25, 50, 75, 100],
         labels: ['Very Low', 'Low', 'Medium', 'High', 'Very High'],
-        colors: ['#00D394', '#22C55E', '#EAB308', '#F97316', '#DC2626'],
+        colors: ['#22C55E', '#10B981', '#EAB308', '#F97316', '#EF4444', '#DC2626'],
         classes: ['low', 'low', 'medium', 'high', 'high']
     }
 };
@@ -88,57 +104,111 @@ function getGaugeConfig(type, value) {
     };
 }
 
+// Calculate rotation angle based on value and gauge type
+function calculateRotation(type, value) {
+    const config = GAUGE_CONFIGS[type];
+    if (!config) return -135;
+    
+    const range = config.maxValue - config.minValue;
+    const angleRange = config.maxAngle - config.minAngle;
+    return ((value - config.minValue) / range) * angleRange + config.minAngle;
+}
+
+// Generate arc fill based on gauge type and value
+function generateArcFill(type, value) {
+    const config = GAUGE_CONFIGS[type];
+    if (!config) return 'transparent';
+    
+    // For momentum gauge - full arc always visible
+    if (type === 'momentum') {
+        return `conic-gradient(from -135deg,
+            #DC2626 0deg, #EF4444 45deg, #F59E0B 90deg, 
+            #22C55E 135deg, #16A34A 180deg, #15803D 225deg,
+            transparent 270deg, transparent 360deg)`;
+    }
+    
+    // For other gauges - partial fill based on value
+    const fillDeg = (value / config.maxValue) * 270;
+    
+    if (type === 'risk') {
+        return `conic-gradient(from -135deg,
+            transparent 0deg,
+            #22C55e 0deg, #10B981 60deg, #EAB308 120deg,
+            #F97316 180deg, #EF4444 240deg, #DC2626 ${fillDeg}deg,
+            transparent ${fillDeg}deg)`;
+    }
+    
+    if (type === 'volatility') {
+        return `conic-gradient(from -135deg,
+            transparent 0deg,
+            #00D394 0deg, #22C55E 60deg, #EAB308 120deg,
+            #F97316 180deg, #EF4444 240deg, #DC2626 ${fillDeg}deg,
+            transparent ${fillDeg}deg)`;
+    }
+    
+    if (type === 'strength') {
+        return `conic-gradient(from -135deg,
+            transparent 0deg,
+            #DC2626 0deg, #EF4444 60deg, #EAB308 120deg,
+            #22C55E 180deg, #00D394 240deg, #00B378 ${fillDeg}deg,
+            transparent ${fillDeg}deg)`;
+    }
+    
+    return 'transparent';
+}
+
 // Enhanced professional gauge update function
 function updateProfessionalGauge(type, value) {
     const needle = document.getElementById(`${type}-needle`);
     const scoreEl = document.getElementById(`${type}-score`);
     const labelEl = document.getElementById(`${type}-label`);
-    const arcEl = document.getElementById(`${type}-arc`);
-    const indicatorEl = document.getElementById(`${type}-indicator`);
+    const arcFillEl = document.getElementById(`${type}-arc`);
+    const indicatorEl = document.querySelector(`#${type}-indicator`);
     const gaugeItem = document.getElementById(`${type}-gauge`);
 
-    if (!needle || !scoreEl || !labelEl || !arcEl || !indicatorEl) {
+    if (!needle || !scoreEl || !labelEl || !arcFillEl || !indicatorEl) {
         console.warn(`Gauge elements for ${type} not found`);
         return;
     }
 
     // Remove all state classes first
-    gaugeItem.classList.remove('extreme', 'updating');
+    gaugeItem.classList.remove('extreme', 'updating', 'risk-high', 'risk-medium', 'risk-low');
     labelEl.className = 'gauge-label';
     indicatorEl.className = 'gauge-indicator-dot';
 
     // Add updating state
     gaugeItem.classList.add('updating');
 
-    // 1. Needle rotation (-135° to +135°)
-    const rotation = (value / 100) * 270 - 135;
+    // 1. Needle rotation
+    const rotation = calculateRotation(type, value);
     needle.style.transform = `translateX(-50%) rotate(${rotation}deg)`;
 
     // 2. Update score with smooth counting
-    const currentValue = parseInt(scoreEl.textContent) || 0;
-    animateValue(scoreEl, currentValue, Math.round(value), 800);
+    const currentValue = parseFloat(scoreEl.textContent) || 0;
+    animateValue(scoreEl, currentValue, value, 800);
 
-    // 3. Update arc fill with proper conic gradient
-    const gaugeConfig = getGaugeConfig(type, value);
-    const fillDegrees = (value / 100) * 270;
-    
-    arcEl.style.background = `conic-gradient(
-        from -135deg,
-        ${gaugeConfig.color} 0deg,
-        ${gaugeConfig.color} ${fillDegrees}deg,
-        transparent ${fillDegrees}deg,
-        transparent 360deg
-    )`;
+    // 3. Update arc fill
+    arcFillEl.style.background = generateArcFill(type, value);
 
     // 4. Update label and indicator with CSS classes
+    const gaugeConfig = getGaugeConfig(type, value);
     labelEl.textContent = gaugeConfig.label;
     labelEl.classList.add(gaugeConfig.class);
-    
     indicatorEl.classList.add(gaugeConfig.class);
 
     // 5. Add extreme effects for values at boundaries
-    if (value >= 90 || value <= 10) {
+    if ((type === 'momentum' && (value >= 80 || value <= -80)) ||
+        (type !== 'momentum' && (value >= 90 || value <= 10))) {
         gaugeItem.classList.add('extreme');
+    }
+
+    // 6. Special handling for risk gauge pulsing
+    if (type === 'risk' && value >= 75) {
+        gaugeItem.classList.add('risk-high');
+    } else if (type === 'risk' && value >= 50) {
+        gaugeItem.classList.add('risk-medium');
+    } else if (type === 'risk' && value <= 25) {
+        gaugeItem.classList.add('risk-low');
     }
 
     // Remove updating state after animation
@@ -158,7 +228,9 @@ function animateValue(element, start, end, duration) {
         
         // Easing function for smooth counting
         const easeOut = 1 - Math.pow(1 - progress, 3);
-        const currentValue = Math.round(start + change * easeOut);
+        const currentValue = type === 'momentum' ? 
+            Math.round(start + change * easeOut) : 
+            Math.round(start + change * easeOut);
         
         element.textContent = currentValue;
 
@@ -170,18 +242,18 @@ function animateValue(element, start, end, duration) {
     requestAnimationFrame(updateValue);
 }
 
-// Initialize gauges with default values
+// Initialize gauges with placeholder values
 function initializeProfessionalGauges() {
-    console.log("🎯 Initializing professional gauges...");
+    console.log("🎯 Initializing professional gauges with placeholder values...");
     
     // Set initial values for all gauges with slight delay for visual effect
     setTimeout(() => {
-        updateProfessionalGauge('momentum', 50);
-        updateProfessionalGauge('volatility', 50);
-        updateProfessionalGauge('strength', 50);
-        updateProfessionalGauge('risk', 50);
+        updateProfessionalGauge('momentum', gaugeValues.momentum);
+        updateProfessionalGauge('volatility', gaugeValues.volatility);
+        updateProfessionalGauge('strength', gaugeValues.strength);
+        updateProfessionalGauge('risk', gaugeValues.risk);
         
-        console.log("✅ Professional gauges initialized");
+        console.log("✅ Professional gauges initialized with placeholders");
     }, 500);
 }
 
@@ -194,10 +266,13 @@ function updateAllProfessionalGauges(values) {
     
     console.log("🔄 Updating all gauges with values:", values);
     
-    updateProfessionalGauge('momentum', values.momentum || 50);
-    updateProfessionalGauge('volatility', values.volatility || 50);
-    updateProfessionalGauge('strength', values.strength || 50);
-    updateProfessionalGauge('risk', values.risk || 50);
+    // Update gauge values state
+    gaugeValues = { ...gaugeValues, ...values };
+    
+    updateProfessionalGauge('momentum', gaugeValues.momentum);
+    updateProfessionalGauge('volatility', gaugeValues.volatility);
+    updateProfessionalGauge('strength', gaugeValues.strength);
+    updateProfessionalGauge('risk', gaugeValues.risk);
 }
 
 // ==================== CONFLUENCE CALCULATION ENGINE ====================
@@ -730,7 +805,7 @@ function checkConfluenceAlerts() {
     // High momentum alert
     if (gaugeValues.momentum >= 80) {
         createAlert('momentum', `Strong bullish confluence detected (${gaugeValues.momentum}%)`, 'high');
-    } else if (gaugeValues.momentum <= 20) {
+    } else if (gaugeValues.momentum <= -80) {
         createAlert('momentum', `Strong bearish confluence detected (${gaugeValues.momentum}%)`, 'high');
     }
     
@@ -931,11 +1006,11 @@ function getSignalIcon(signalType) {
 // Get momentum description text
 function getMomentumText(value) {
     if (value >= 80) return 'Very Bullish';
-    if (value >= 67) return 'Bullish';
-    if (value >= 45) return 'Slightly Bullish';
-    if (value >= 33) return 'Neutral';
-    if (value >= 20) return 'Slightly Bearish';
-    if (value >= 0) return 'Bearish';
+    if (value >= 50) return 'Bullish';
+    if (value >= 20) return 'Slightly Bullish';
+    if (value >= -20) return 'Neutral';
+    if (value >= -50) return 'Slightly Bearish';
+    if (value >= -80) return 'Bearish';
     return 'Very Bearish';
 }
 
@@ -959,8 +1034,8 @@ function getRiskText(value) {
 
 // Get CSS classes for values
 function getMomentumClass(value) {
-    if (value >= 67) return 'bullish';
-    if (value <= 33) return 'bearish';
+    if (value >= 50) return 'bullish';
+    if (value <= -50) return 'bearish';
     return 'neutral';
 }
 

@@ -175,97 +175,100 @@
     </div>
 
     <div id="analysis-tab" class="tab-content">
-      <!-- Professional Gauges Container -->
-      <div class="gauges-container" id="gauges-container" data-initialized="false">
-        <div class="gauge-row">
-          <!-- Momentum Gauge -->
-          <div class="gauge-item" id="momentum-gauge" data-gauge-type="momentum">
-            <div class="gauge-title">Momentum</div>
-            <div class="gauge-container">
-              <div class="gauge-arc">
-                <div class="gauge-arc-fill" id="momentum-arc"></div>
-              </div>
-              <div class="gauge-hub"></div>
-              <div class="gauge-needle-container">
-                <div class="gauge-needle" id="momentum-needle">
-                  <div class="needle-head"></div>
+      <!-- Market Gauge Section Header -->
+      <div class="analysis-section">
+        <h3>📊 Market Gauges</h3>
+        <div class="gauges-container" id="gauges-container" data-initialized="false">
+          <div class="gauge-row">
+            <!-- Momentum Gauge -->
+            <div class="gauge-item" id="momentum-gauge" data-gauge-type="momentum">
+              <div class="gauge-headline">Momentum</div>
+              <div class="gauge-container">
+                <div class="gauge-arc">
+                  <div class="gauge-arc-fill" id="momentum-arc"></div>
                 </div>
-              </div>
-              <div class="gauge-value-container">
-                <div class="gauge-score" id="momentum-score">-45<span class="gauge-unit">pts</span></div>
-              </div>
-              <div class="gauge-label-container">
-                <div class="gauge-indicator-dot bearish" id="momentum-indicator"></div>
-                <div class="gauge-label bearish" id="momentum-label">Bearish</div>
+                <div class="gauge-hub"></div>
+                <div class="gauge-needle-container">
+                  <div class="gauge-needle" id="momentum-needle">
+                    <div class="needle-head"></div>
+                  </div>
+                </div>
+                <div class="gauge-value-container">
+                  <div class="gauge-score" id="momentum-score">-45<span class="gauge-unit">pts</span></div>
+                </div>
+                <div class="gauge-label-container">
+                  <div class="gauge-indicator-dot bearish" id="momentum-indicator"></div>
+                  <div class="gauge-label bearish" id="momentum-label">Bearish</div>
+                </div>
               </div>
             </div>
-          </div>
-          
-          <!-- Volatility Gauge -->
-          <div class="gauge-item" id="volatility-gauge" data-gauge-type="volatility">
-            <div class="gauge-title">Volatility</div>
-            <div class="gauge-container">
-              <div class="gauge-arc">
-                <div class="gauge-arc-fill" id="volatility-arc"></div>
-              </div>
-              <div class="gauge-hub"></div>
-              <div class="gauge-needle-container">
-                <div class="gauge-needle" id="volatility-needle">
-                  <div class="needle-head"></div>
+            
+            <!-- Volatility Gauge -->
+            <div class="gauge-item" id="volatility-gauge" data-gauge-type="volatility">
+              <div class="gauge-headline">Volatility</div>
+              <div class="gauge-container">
+                <div class="gauge-arc">
+                  <div class="gauge-arc-fill" id="volatility-arc"></div>
                 </div>
-              </div>
-              <div class="gauge-value-container">
-                <div class="gauge-score" id="volatility-score">68<span class="gauge-unit">%</span></div>
-              </div>
-              <div class="gauge-label-container">
-                <div class="gauge-indicator-dot high" id="volatility-indicator"></div>
-                <div class="gauge-label high" id="volatility-label">High</div>
+                <div class="gauge-hub"></div>
+                <div class="gauge-needle-container">
+                  <div class="gauge-needle" id="volatility-needle">
+                    <div class="needle-head"></div>
+                  </div>
+                </div>
+                <div class="gauge-value-container">
+                  <div class="gauge-score" id="volatility-score">68<span class="gauge-unit">%</span></div>
+                </div>
+                <div class="gauge-label-container">
+                  <div class="gauge-indicator-dot high" id="volatility-indicator"></div>
+                  <div class="gauge-label high" id="volatility-label">High</div>
+                </div>
               </div>
             </div>
-          </div>
-          
-          <!-- Strength Gauge -->
-          <div class="gauge-item" id="strength-gauge" data-gauge-type="strength">
-            <div class="gauge-title">Strength</div>
-            <div class="gauge-container">
-              <div class="gauge-arc">
-                <div class="gauge-arc-fill" id="strength-arc"></div>
-              </div>
-              <div class="gauge-hub"></div>
-              <div class="gauge-needle-container">
-                <div class="gauge-needle" id="strength-needle">
-                  <div class="needle-head"></div>
+            
+            <!-- Strength Gauge -->
+            <div class="gauge-item" id="strength-gauge" data-gauge-type="strength">
+              <div class="gauge-headline">Strength</div>
+              <div class="gauge-container">
+                <div class="gauge-arc">
+                  <div class="gauge-arc-fill" id="strength-arc"></div>
                 </div>
-              </div>
-              <div class="gauge-value-container">
-                <div class="gauge-score" id="strength-score">82<span class="gauge-unit">%</span></div>
-              </div>
-              <div class="gauge-label-container">
-                <div class="gauge-indicator-dot strong" id="strength-indicator"></div>
-                <div class="gauge-label strong" id="strength-label">Strong</div>
+                <div class="gauge-hub"></div>
+                <div class="gauge-needle-container">
+                  <div class="gauge-needle" id="strength-needle">
+                    <div class="needle-head"></div>
+                  </div>
+                </div>
+                <div class="gauge-value-container">
+                  <div class="gauge-score" id="strength-score">82<span class="gauge-unit">%</span></div>
+                </div>
+                <div class="gauge-label-container">
+                  <div class="gauge-indicator-dot strong" id="strength-indicator"></div>
+                  <div class="gauge-label strong" id="strength-label">Strong</div>
+                </div>
               </div>
             </div>
-          </div>
-          
-          <!-- Risk Gauge -->
-          <div class="gauge-item" id="risk-gauge" data-gauge-type="risk">
-            <div class="gauge-title">Risk</div>
-            <div class="gauge-container">
-              <div class="gauge-arc">
-                <div class="gauge-arc-fill" id="risk-arc"></div>
-              </div>
-              <div class="gauge-hub"></div>
-              <div class="gauge-needle-container">
-                <div class="gauge-needle" id="risk-needle">
-                  <div class="needle-head"></div>
+            
+            <!-- Risk Gauge -->
+            <div class="gauge-item" id="risk-gauge" data-gauge-type="risk">
+              <div class="gauge-headline">Risk</div>
+              <div class="gauge-container">
+                <div class="gauge-arc">
+                  <div class="gauge-arc-fill" id="risk-arc"></div>
                 </div>
-              </div>
-              <div class="gauge-value-container">
-                <div class="gauge-score" id="risk-score">35<span class="gauge-unit">%</span></div>
-              </div>
-              <div class="gauge-label-container">
-                <div class="gauge-indicator-dot low" id="risk-indicator"></div>
-                <div class="gauge-label low" id="risk-label">Low</div>
+                <div class="gauge-hub"></div>
+                <div class="gauge-needle-container">
+                  <div class="gauge-needle" id="risk-needle">
+                    <div class="needle-head"></div>
+                  </div>
+                </div>
+                <div class="gauge-value-container">
+                  <div class="gauge-score" id="risk-score">35<span class="gauge-unit">%</span></div>
+                </div>
+                <div class="gauge-label-container">
+                  <div class="gauge-indicator-dot low" id="risk-indicator"></div>
+                  <div class="gauge-label low" id="risk-label">Low</div>
+                </div>
               </div>
             </div>
           </div>
@@ -273,7 +276,7 @@
       </div>
 
       <!-- Multi-Timeframe Strength -->
-      <div class="analysis-section" id="timeframe-strength-section" style="margin-top: 20px;">
+      <div class="analysis-section" id="timeframe-strength-section">
         <h3>📈 Multi-Timeframe Strength</h3>
         <div class="timeframe-strength-container" id="timeframe-strength-container">
           <!-- Timeframe strength bars will be populated here -->
